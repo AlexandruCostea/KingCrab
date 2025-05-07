@@ -13,7 +13,6 @@ pub struct Board {
     pub game_state: GameState,
     pub game_history: GameHistory,
     pub zobrist_keys: Arc<ZobristKeys>,
-
 }
 
 
@@ -250,6 +249,42 @@ impl Display for Board {
         }
 
         writeln!(f, "  a b c d e f g h")?;
+
+        writeln!(f, "\nWhite occupancy:")?;
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                    write!(f, "⬜")?;
+                } else {
+                    write!(f, "⬛")?;
+                }
+            }
+            writeln!(f)?;
+        }
+
+        writeln!(f, "\nBlack occupancy:")?;
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                if self.sides[Side::Black as usize] & (1 << square_index) != 0 {
+                    write!(f, "⬜")?;
+                } else {
+                    write!(f, "⬛")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        writeln!(f, "\nPiece list:")?;
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                let piece = self.piece_list[square_index];
+                if piece != Piece::None {
+                    writeln!(f, "Rank {}, file {}: {:?}", rank + 1, file + 1, piece)?;
+                }
+            }
+        }
         writeln!(f, "\nSide to move: {:?}", self.active_side())?;
         writeln!(f, "Castling rights: {:?}", self.game_state.castling)?;
         writeln!(f, "En passant square: {:?}", self.game_state.en_passant)?;
