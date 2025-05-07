@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use std::fmt::{self, Display, Formatter};
+
 
 use super::{definitions::{Bitboard, NrOf, Piece, Side, Square}, game_history::GameHistory, game_state::GameState, zobrist::ZobristKeys};
 
@@ -27,11 +29,56 @@ impl Board {
             zobrist_keys: Arc::new(ZobristKeys::new()),
         }
     }
+
+
+    pub fn reset(&mut self) {
+        self.sides = [0; NrOf::SIDES];
+        self.pieces = [[0; NrOf::PIECE_TYPES]; NrOf::SIDES];
+        self.piece_list = [Piece::None; NrOf::SQUARES];
+        self.game_state.clear();
+        self.game_history.clear();
+    }
+
+
+    pub fn get_pieces(&self, side: Side, piece: Piece) -> Bitboard {
+        self.pieces[side as usize][piece as usize]
+    }
+
+
+    pub fn get_bitboards(&self, side: Side) -> &[Bitboard; NrOf::PIECE_TYPES] {
+        &self.pieces[side as usize]
+    }
+
+
+    pub fn occupancy(&self) -> Bitboard {
+        self.sides[Side::White as usize] | self.sides[Side::Black as usize]
+    }
+
+
+    pub fn active_side(&self) -> Side {
+        self.game_state.active_side
+    }
+
+
+    pub fn opponent(&self) -> Side {
+        let opponet = (self.game_state.active_side as usize) ^ 1;
+        Side::try_from(opponet).unwrap()
+    }
+
+
+    pub fn king_square(&self, side: Side) -> Square {
+        let king_square = self.pieces[side as usize][Piece::King as usize]
+            .trailing_zeros() as usize;
+        Square::try_from(king_square).unwrap()
+
+    }
 }
 
+
+// Initialization methods
 impl Board {
 
-    fn init(&mut self) {
+    pub fn init(&mut self) {
         let pieces_per_side_bitboards = self.init_pieces_per_side_bitboards();
         self.sides[Side::White as usize] = pieces_per_side_bitboards.0;
         self.sides[Side::Black as usize] = pieces_per_side_bitboards.1;
@@ -84,10 +131,11 @@ impl Board {
             // square/piece combination into the zobrist key.
             while white_pieces > 0 {
                 let square: usize = white_pieces.trailing_zeros() as usize;
-                 self.game_state.zobrist_key ^= self.zobrist_keys
+                self.game_state.zobrist_key ^= self.zobrist_keys
                                                     .piece(Side::White, 
                                                         Piece::try_from(piece_type).unwrap(),
                                                         Square::try_from(square).unwrap());
+                white_pieces &= white_pieces - 1;
             }
 
 
@@ -97,6 +145,7 @@ impl Board {
                                                     .piece(Side::Black, 
                                                         Piece::try_from(piece_type).unwrap(),
                                                         Square::try_from(square).unwrap());
+                black_pieces &= black_pieces - 1;
             }
         }
 
@@ -106,10 +155,6 @@ impl Board {
         self.game_state.zobrist_key ^= self.zobrist_keys.en_passant(self.game_state.en_passant);
     }
 
-
-    pub fn get_pieces(&self, side: Side, piece: Piece) -> Bitboard {
-        self.pieces[side as usize][piece as usize]
-    }
 
 
     fn init_piece_list(&mut self) {
@@ -136,5 +181,82 @@ impl Board {
                 black_pieces &= black_pieces - 1;
             }
         }
+    }
+}
+
+
+impl Display for Board {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Board Position:")?;
+        for rank in (0..8).rev() {
+            write!(f, "{} ", rank + 1)?;
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                let piece = self.piece_list[square_index];
+                let symbol = match piece {
+                    Piece::Pawn => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♟'
+                        } else {
+                            '♙'
+                        }
+                    }
+                    Piece::Knight => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♞'
+                        } else {
+                            '♘'
+                        }
+                    }
+                    Piece::Bishop => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♝'
+                        } else {
+                            '♗'
+                        }
+                    }
+                    Piece::Rook => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♜'
+                        } else {
+                            '♖'
+                        }
+                    }
+                    Piece::Queen => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♛'
+                        } else {
+                            '♕'
+                        }
+                    }
+                    Piece::King => {
+                        if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                            '♚'
+                        } else {
+                            '♔'
+                        }
+                    }
+                    Piece::None => {
+                        if (rank + file) % 2 == 0 {
+                            '░'
+                        } else {
+                            '▓'
+                        }
+                    }
+                };
+                write!(f, "{} ", symbol)?;
+            }
+            writeln!(f)?;
+        }
+
+        writeln!(f, "  a b c d e f g h")?;
+        writeln!(f, "\nSide to move: {:?}", self.active_side())?;
+        writeln!(f, "Castling rights: {:?}", self.game_state.castling)?;
+        writeln!(f, "En passant square: {:?}", self.game_state.en_passant)?;
+        writeln!(f, "Halfmove clock: {}", self.game_state.half_move_clock)?;
+        writeln!(f, "Fullmove number: {}", self.game_state.full_move_number)?;
+        writeln!(f, "Zobrist key: {:016x}", self.game_state.zobrist_key)?;
+
+        Ok(())
     }
 }

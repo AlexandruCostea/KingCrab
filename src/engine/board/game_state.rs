@@ -25,4 +25,14 @@ impl GameState {
             // next_move: Move::default(),
         }
     }
+
+
+    pub fn clear(&mut self) {
+        self.active_side = Side::White;
+        self.castling = 0;
+        self.en_passant = None;
+        self.half_move_clock = 0;
+        self.full_move_number = 0;
+        self.zobrist_key = 0;
+    }
 }
