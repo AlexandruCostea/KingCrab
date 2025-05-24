@@ -1,10 +1,8 @@
 use core::fmt;
 use std::{fmt::Display, str::FromStr};
-use crate::engine::board::definitions::{Square, HALF_MOVE_MAX, MAX_GAME_MOVES};
-
-use super::{board::Board, definitions::{Castling, File, Piece, Rank, Side, SQUARE_BITBOARDS}};
-
 use if_chain::if_chain;
+
+use super::{board::Board, definitions::{Square, File, Rank, Side, Piece, Castling, HALF_MOVE_MAX, MAX_GAME_MOVES, SQUARE_BITBOARDS}};
 
 
 const FEN_PARTS_COUNT: usize = 6;
@@ -22,8 +20,6 @@ const SPLITTER: char = '/';
 const DASH: char = '-';
 const EM_DASH: char = '–';
 const SPACE: char = ' ';
-
-const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #[derive(Debug)]
 pub enum FenError {
@@ -51,57 +47,36 @@ impl Display for FenError {
     }
 }
 
-struct FenParser {
+pub struct FenParser<'board_lifetime> {
     fen_string: String,
-    board: Board,
+    board: &'board_lifetime mut Board,
 }
 
-impl FenParser {
-    fn new(fen_string: String, board: Board) -> Self {
+impl<'board_lifetime> FenParser<'board_lifetime> {
+    pub fn new(fen_string: String, board: &'board_lifetime mut Board) -> Self {
         Self { fen_string, board }
     }
 }
 
-pub type FenResult = Result<(), FenError>;
 pub type SplitResult = Result<Vec<String>, FenError>;
-type FenPartParser = fn(board: &mut Board, part: &str) -> FenResult;
-
-impl Board {
-    pub fn from_fen(&mut self, fen: Option<&str>) -> Result<(), FenError> {
-        let fen_string = fen.unwrap_or(FEN_STARTING_POSITION);
-
-        let mut temp_board = self.clone();
-        temp_board.reset();
-
-        let mut fen_parser = FenParser::new(
-                                            fen_string.to_string(),
-                                            temp_board);
-
-        let mut temp_board = fen_parser.parse()?;
+type FenPartParser = fn(board: &mut Board, part: &str) ->  Result<(), FenError>;
 
 
-        temp_board.init();
-        *self = temp_board;
+impl FenParser<'_> {
 
-        Ok(())
-    }
-}
-
-impl FenParser {
-
-    fn parse(& mut self) -> Result<Board, FenError> {
+    pub fn parse(&mut self) -> Result<(), FenError> {
         let fen_parts = Self::split_fen_string(&self.fen_string)?;
 
         let fen_parsers = FenParser::create_part_parsers();
 
         for (part, parser) in fen_parts.iter().zip(fen_parsers.iter()) {
-            let result = parser(&mut self.board, part);
+            let result = parser(self.board, part);
             if result.is_err() {
                 return Err(result.err().unwrap());
             }
         }
 
-        Ok(self.board.clone())
+        Ok(())
     }
 
     fn split_fen_string(fen_string: &str) -> SplitResult {
@@ -135,7 +110,7 @@ impl FenParser {
         ]
     }
 
-    fn pieces(board: &mut Board, part: &str) -> FenResult {
+    fn pieces(board: &mut Board, part: &str) -> Result<(), FenError> {
         let mut rank = Rank::R8 as u8;
         let mut file = File::A as u8;
     
@@ -177,7 +152,7 @@ impl FenParser {
         Ok(())
     }
 
-    fn color(board: &mut Board, part: &str) -> FenResult {
+    fn color(board: &mut Board, part: &str) -> Result<(), FenError> {
         if_chain! {
             if part.len() == 1;
             if let Some(c) = part.chars().next();
@@ -195,7 +170,7 @@ impl FenParser {
         Err(FenError::PlaySidePartError)
     }
 
-    fn castling(board: &mut Board, part: &str) -> FenResult {
+    fn castling(board: &mut Board, part: &str) -> Result<(), FenError> {
 
         if (1..=4).contains(&part.len()) {
             for c in part.chars() {
@@ -214,7 +189,7 @@ impl FenParser {
         Err(FenError::CastlingRightsPartError)
     }
 
-    fn en_passant(board: &mut Board, part: &str) -> FenResult {
+    fn en_passant(board: &mut Board, part: &str) -> Result<(), FenError> {
         if_chain! {
             if part.len() == 1;
             if let Some(x) = part.chars().next();
@@ -238,7 +213,7 @@ impl FenParser {
         Err(FenError::EnPassantPartError)
     }
 
-    fn half_move_clock(board: &mut Board, part: &str) -> FenResult {
+    fn half_move_clock(board: &mut Board, part: &str) -> Result<(), FenError> {
         if_chain! {
             if (1..=3).contains(&part.len());
             if let Ok(x) = part.parse::<u8>();
@@ -252,7 +227,7 @@ impl FenParser {
         Err(FenError::HalfMovePartError)
     }
 
-    fn full_move_number(board: &mut Board, part: &str) -> FenResult {
+    fn full_move_number(board: &mut Board, part: &str) -> Result<(), FenError> {
         if_chain! {
             if !part.is_empty() && part.len() <= 4;
             if let Ok(x) = part.parse::<u16>();

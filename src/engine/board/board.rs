@@ -1,7 +1,11 @@
 use std::sync::Arc;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Error, Formatter};
 
 
+use super::chess_move::ChessMove;
+use super::definitions::{Castling, FEN_STARTING_POSITION, HALF_MOVE_MAX, SQUARE_BITBOARDS};
+use super::fen::{FenError, FenParser};
+use super::game_history::RecordedMove;
 use super::{definitions::{Bitboard, NrOf, Piece, Side, Square}, game_history::GameHistory, game_state::GameState, zobrist::ZobristKeys};
 
 
@@ -17,7 +21,6 @@ pub struct Board {
 
 
 impl Board {
-
     pub fn new() -> Self {
         Board {
             sides: [0; NrOf::SIDES],
@@ -28,7 +31,6 @@ impl Board {
             zobrist_keys: Arc::new(ZobristKeys::new()),
         }
     }
-
 
     pub fn reset(&mut self) {
         self.sides = [0; NrOf::SIDES];
@@ -43,39 +45,33 @@ impl Board {
         self.pieces[side as usize][piece as usize]
     }
 
-
     pub fn get_bitboards(&self, side: Side) -> &[Bitboard; NrOf::PIECE_TYPES] {
         &self.pieces[side as usize]
     }
 
+    pub fn get_side_occupancy(&self, side: Side) -> Bitboard {
+        self.sides[side as usize]
+    }
 
-    pub fn occupancy(&self) -> Bitboard {
+    pub fn get_full_occupancy(&self) -> Bitboard {
         self.sides[Side::White as usize] | self.sides[Side::Black as usize]
     }
 
-
-    pub fn active_side(&self) -> Side {
+    pub fn get_active_side(&self) -> Side {
         self.game_state.active_side
     }
 
-
-    pub fn opponent(&self) -> Side {
+    pub fn get_opponent(&self) -> Side {
         let opponet = (self.game_state.active_side as usize) ^ 1;
         Side::try_from(opponet).unwrap()
     }
 
-
-    pub fn king_square(&self, side: Side) -> Square {
+    pub fn get_king_square(&self, side: Side) -> Square {
         let king_square = self.pieces[side as usize][Piece::King as usize]
             .trailing_zeros() as usize;
         Square::try_from(king_square).unwrap()
 
     }
-}
-
-
-// Initialization methods
-impl Board {
 
     pub fn init(&mut self) {
         let pieces_per_side_bitboards = self.init_pieces_per_side_bitboards();
@@ -87,6 +83,23 @@ impl Board {
         self.init_zobrist_key();
 
         // self.game_state.next_move = Move::new(0);
+    }
+
+    pub fn from_fen(&mut self, fen: Option<&str>) -> Result<(), FenError> {
+        let fen_string = fen.unwrap_or(FEN_STARTING_POSITION);
+
+        self.reset();
+
+        let mut fen_parser = FenParser::new(
+                                            fen_string.to_string(),
+                                            self);
+
+        fen_parser.parse()?;
+
+
+        self.init();
+
+        Ok(())
     }
 
 
@@ -181,6 +194,364 @@ impl Board {
             }
         }
     }
+
+    pub fn make_move(&mut self, chess_move: ChessMove) {
+        let prev_state = self.game_state.clone();
+        let mut captured_piece = Piece::None;
+
+        if chess_move.is_quiet() {
+            let piece = self.piece_list[chess_move.from as usize];
+            if piece != Piece::Pawn {
+                self.game_state.half_move_clock += 1;
+                match piece {
+                    Piece::King => {
+                        if self.get_active_side() == Side::White {
+                            self.game_state.castling &= !(Castling::WhiteKing as u8);
+                            self.game_state.castling &= !(Castling::WhiteQueen as u8);
+                        } else {
+                            self.game_state.castling &= !(Castling::BlackKing as u8);
+                            self.game_state.castling &= !(Castling::BlackQueen as u8);
+                        }
+                    },
+                    Piece::Rook => {
+                        match chess_move.from {
+                            Square::A1 => {
+                                self.game_state.castling &= !(Castling::WhiteQueen as u8);
+                            },
+                            Square::H1 => {
+                                self.game_state.castling &= !(Castling::WhiteKing as u8);
+                            },
+                            Square::A8 => {
+                                self.game_state.castling &= !(Castling::BlackQueen as u8);
+                            },
+                            Square::H8 => {
+                                self.game_state.castling &= !(Castling::BlackKing as u8);
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+            } else {
+                self.game_state.half_move_clock = 0;
+            }
+            self.move_piece(self.get_active_side(),
+                     self.piece_list[chess_move.from as usize],
+                     chess_move.from, chess_move.to);
+            self.clear_ep_square();
+
+        } else if chess_move.is_double_pawn_push() {
+            self.move_piece(self.get_active_side(),
+                self.piece_list[chess_move.from as usize],
+                chess_move.from, chess_move.to);
+
+            self.set_ep_square(match self.get_active_side() {
+                Side::White => Square::try_from(chess_move.to as usize - 8).unwrap(),
+                Side::Black => Square::try_from(chess_move.to as usize + 8).unwrap(),
+            });
+
+            self.game_state.half_move_clock = 0;
+
+        } else if chess_move.is_king_castling() || chess_move.is_queen_castling() {
+
+            let (rook_pos, rook_dest) = match chess_move.to {
+                Square::G1 => (Square::H1, Square::F1),
+                Square::C1 => (Square::A1, Square::D1),
+                Square::G8 => (Square::H8, Square::F8),
+                Square::C8 => (Square::A8, Square::D8),
+                _ => unreachable!()    
+            };
+
+            // Move the king
+            self.move_piece(self.get_active_side(),
+                self.piece_list[chess_move.from as usize],
+                chess_move.from, chess_move.to);
+
+            // Move the rook
+            self.move_piece(self.get_active_side(),
+                self.piece_list[rook_pos as usize],
+                rook_pos, rook_dest);
+
+            let mut castling_rights = self.game_state.castling;
+            if self.get_active_side() == Side::White {
+                castling_rights &= !(Castling::WhiteKing as u8);
+                castling_rights &= !(Castling::WhiteQueen as u8);
+            } else {
+                castling_rights &= !(Castling::BlackKing as u8);
+                castling_rights &= !(Castling::BlackQueen as u8);
+            }
+            
+            self.set_castling_rights(castling_rights);
+            self.game_state.half_move_clock += 1;
+            self.clear_ep_square();
+
+        } else if chess_move.is_capture() {
+            captured_piece = self.piece_list[chess_move.to as usize];
+
+            match chess_move.is_en_passant() {
+                true => {
+                    let ep_square = self.game_state.en_passant.unwrap() as usize;
+                    let piece_square = match self.get_active_side() {
+                        Side::White => ep_square - 8,
+                        Side::Black => ep_square + 8,
+                    };
+
+                    captured_piece = self.piece_list[piece_square];
+                    self.remove_piece(self.get_opponent(),
+                    captured_piece, Square::try_from(piece_square).unwrap());
+                },
+                false => {
+                    self.remove_piece(self.get_opponent(),
+                    captured_piece, chess_move.to);
+
+                    if captured_piece == Piece::Rook {
+                        match chess_move.to {
+                            Square::A1 => {
+                                self.game_state.castling &= !(Castling::WhiteQueen as u8);
+                            },
+                            Square::H1 => {
+                                self.game_state.castling &= !(Castling::WhiteKing as u8);
+                            },
+                            Square::A8 => {
+                                self.game_state.castling &= !(Castling::BlackQueen as u8);
+                            },
+                            Square::H8 => {
+                                self.game_state.castling &= !(Castling::BlackKing as u8);
+                            },
+                            _ => (),
+                        }
+                    }
+                }
+            }
+            
+            match chess_move.is_promotion() {
+                true => {
+                    self.remove_piece(self.get_active_side(),
+                    self.piece_list[chess_move.from as usize],
+                    chess_move.from);
+                    self.place_piece(self.get_active_side(),
+                    chess_move.promotion.unwrap(), chess_move.to);
+                },
+                false => {
+                    self.move_piece(self.get_active_side(),
+                self.piece_list[chess_move.from as usize],
+                    chess_move.from, chess_move.to);
+                }
+            }
+
+            self.game_state.half_move_clock = 0;
+            self.clear_ep_square();
+
+        } else if chess_move.is_promotion() {
+            self.remove_piece(self.get_active_side(),
+                self.piece_list[chess_move.from as usize],
+                chess_move.from);
+            self.place_piece(self.get_active_side(),
+                chess_move.promotion.unwrap(), chess_move.to);
+            self.game_state.half_move_clock = 0;
+            self.clear_ep_square();
+        } 
+
+        if self.get_active_side() == Side::Black {
+            self.game_state.full_move_number += 1;
+        }
+        
+        let captured = if captured_piece != Piece::None {
+            let mut captured_square = chess_move.to;
+            if chess_move.is_en_passant() {
+                captured_square = match self.get_active_side() {
+                    Side::White => Square::try_from(chess_move.to as usize - 8).unwrap(),
+                    Side::Black => Square::try_from(chess_move.to as usize + 8).unwrap(),
+                };  
+            }
+            Some((captured_piece, self.get_opponent(), captured_square))
+        } else {
+            None
+        };
+        self.game_history.push(
+            RecordedMove::new(chess_move, prev_state, captured));
+        self.game_state.active_side = self.get_opponent();
+    }
+
+    pub fn undo_move(&mut self) {
+        if let Some(last_move) = self.game_history.pop() {
+            let prev_state = last_move.prev_state;
+            let prev_moved_piece = self.piece_list[last_move.mv.to as usize];
+
+            if last_move.mv.is_promotion() {
+                self.remove_piece(prev_state.active_side, prev_moved_piece, last_move.mv.to);
+                self.place_piece(prev_state.active_side, Piece::Pawn, last_move.mv.from);
+            } else {
+                self.move_piece(prev_state.active_side,
+                    prev_moved_piece, last_move.mv.to, last_move.mv.from);
+            }
+
+            if last_move.mv.is_queen_castling() || last_move.mv.is_king_castling() {
+                let (rook_pos, rook_dest) = match last_move.mv.to {
+                    Square::G1 => (Square::H1, Square::F1),
+                    Square::C1 => (Square::A1, Square::D1),
+                    Square::G8 => (Square::H8, Square::F8),
+                    Square::C8 => (Square::A8, Square::D8),
+                    _ => unreachable!()
+                };
+                self.move_piece(prev_state.active_side,
+                    self.piece_list[rook_dest as usize], rook_dest, rook_pos);
+            }
+            if let Some((piece, side, square)) = last_move.captured_piece {
+                self.place_piece(side, piece, square);
+            }
+            self.game_state = prev_state;
+        }
+    }
+
+    pub fn remove_piece(&mut self, side: Side, piece: Piece, square: Square) {
+        self.pieces[side as usize][piece as usize] ^= SQUARE_BITBOARDS[square as usize];
+        self.sides[side as usize] ^= SQUARE_BITBOARDS[square as usize];
+        self.piece_list[square as usize] = Piece::None;
+        self.game_state.zobrist_key ^= self.zobrist_keys
+            .piece(side, piece, square);
+    }
+
+    pub fn place_piece(&mut self, side: Side, piece: Piece, square: Square) {
+        self.pieces[side as usize][piece as usize] |= SQUARE_BITBOARDS[square as usize];
+        self.sides[side as usize] |= SQUARE_BITBOARDS[square as usize];
+        self.piece_list[square as usize] = piece;
+        self.game_state.zobrist_key ^= self.zobrist_keys
+            .piece(side, piece, square);
+    }
+
+    pub fn move_piece(&mut self, side: Side, piece: Piece, from: Square, to: Square) {
+        self.remove_piece(side, piece, from);
+        self.place_piece(side, piece, to);
+    }
+
+    pub fn set_ep_square(&mut self, square: Square) {
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .en_passant(self.game_state.en_passant);
+
+        self.game_state.en_passant = Some(square as u8);
+
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .en_passant(self.game_state.en_passant);
+    }
+
+    pub fn clear_ep_square(&mut self) {
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .en_passant(self.game_state.en_passant);
+
+        self.game_state.en_passant = None;
+
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .en_passant(self.game_state.en_passant);
+    }
+
+    pub fn switch_active_side(&mut self) {
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .side(self.game_state.active_side);
+
+        self.game_state.active_side = self.get_opponent();
+
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                .side(self.game_state.active_side);
+    }
+
+    pub fn set_castling_rights(&mut self, new_rights: u8) {
+        self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
+        self.game_state.castling = new_rights;
+        self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
+    }
+    
+
+    pub fn draw_by_fifty_move_rule(&self) -> bool {
+        self.game_state.half_move_clock >= HALF_MOVE_MAX
+    }
+
+    pub fn draw_by_threefold_repetition(&self) -> bool {
+        let mut count = 0;
+        for i in (0..self.game_history.len()).rev() {
+            let previous_state = self.game_history.get_ref(i).prev_state;
+            if previous_state.zobrist_key == self.game_state.zobrist_key {
+                count += 1;
+            }
+
+            if previous_state.half_move_clock == 0 {
+                break;
+            }
+        }
+        count >= 3
+    }
+
+    pub fn draw_by_insufficient_material(&self) -> bool {
+        let white = self.get_bitboards(Side::White);
+        let black = self.get_bitboards(Side::Black);
+
+        // Check for mating material: queens, rooks and pawns
+        let has_mating_material = white[Piece::Queen as usize] != 0
+            || white[Piece::Rook as usize] != 0
+            || white[Piece::Pawn as usize] != 0
+            || black[Piece::Queen as usize] != 0
+            || black[Piece::Rook as usize] != 0
+            || black[Piece::Pawn as usize] != 0;
+
+        if has_mating_material {
+            return false;
+        }
+
+        // Check for insufficient material conditions
+
+        // King vs. King
+        let kk = white[Piece::Bishop as usize] == 0
+            && white[Piece::Knight as usize] == 0
+            && black[Piece::Bishop as usize] == 0
+            && black[Piece::Knight as usize] == 0;
+
+        // King & 1 Bishop vs. King
+        let kbk = white[Piece::Bishop as usize].count_ones() == 1
+            && white[Piece::Knight as usize] == 0
+            && black[Piece::Bishop as usize] == 0
+            && black[Piece::Knight as usize] == 0;
+
+        // King & 1 Knight vs. King
+        let knk = white[Piece::Bishop as usize] == 0
+            && white[Piece::Knight as usize].count_ones() == 1
+            && black[Piece::Bishop as usize] == 0
+            && black[Piece::Knight as usize] == 0;
+
+        // King vs. King & 1 Bishop
+        let kkb = white[Piece::Bishop as usize] == 0
+            && white[Piece::Knight as usize] == 0
+            && black[Piece::Bishop as usize].count_ones() == 1
+            && black[Piece::Knight as usize] == 0;
+
+        // King vs. King & 1 Knight
+        let kkn = white[Piece::Bishop as usize] == 0
+            && white[Piece::Knight as usize] == 0
+            && black[Piece::Bishop as usize] == 0
+            && black[Piece::Knight as usize].count_ones() == 1;
+
+        // King & 1 Bishop vs. King & 1 Bishop & both bishops on the same color
+        let kbkb = white[Piece::Bishop as usize].count_ones() == 1
+            && white[Piece::Knight as usize] == 0
+            && black[Piece::Bishop as usize].count_ones() == 1
+            && black[Piece::Knight as usize] == 0;
+
+
+        let same_color_sq = if kbkb {
+            let white_bishop_square = white[Piece::Bishop as usize].trailing_zeros() as usize;
+            let black_bishop_square = black[Piece::Bishop as usize].trailing_zeros() as usize;
+
+            let white_bishop_color = (white_bishop_square / 8 + white_bishop_square % 8) % 2;
+            let black_bishop_color = (black_bishop_square / 8 + black_bishop_square % 8) % 2;
+            white_bishop_color == black_bishop_color
+        } else {
+            false
+        };
+        if kk || kbk || knk || kkb || kkn || (kbkb && same_color_sq) {
+            return true;
+        }
+
+        false
+    }
 }
 
 
@@ -250,30 +621,66 @@ impl Display for Board {
 
         writeln!(f, "  a b c d e f g h")?;
 
-        writeln!(f, "\nWhite occupancy:")?;
-        for rank in (0..8).rev() {
-            for file in 0..8 {
-                let square_index = rank * 8 + file;
-                if self.sides[Side::White as usize] & (1 << square_index) != 0 {
-                    write!(f, "⬜")?;
-                } else {
-                    write!(f, "⬛")?;
+        // writeln!(f, "\nWhite occupancy:")?;
+        // for rank in (0..8).rev() {
+        //     for file in 0..8 {
+        //         let square_index = rank * 8 + file;
+        //         if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+        //             write!(f, "⬜")?;
+        //         } else {
+        //             write!(f, "⬛")?;
+        //         }
+        //     }
+        //     writeln!(f)?;
+        // }
+
+        // writeln!(f, "\nBlack occupancy:")?;
+        // for rank in (0..8).rev() {
+        //     for file in 0..8 {
+        //         let square_index = rank * 8 + file;
+        //         if self.sides[Side::Black as usize] & (1 << square_index) != 0 {
+        //             write!(f, "⬜")?;
+        //         } else {
+        //             write!(f, "⬛")?;
+        //         }
+        //     }
+        //     writeln!(f)?;
+        // }
+        writeln!(f, "\n White Bitboards");
+
+        for i in 0..NrOf::PIECE_TYPES {
+            let current_board = self.pieces[0][i];
+            // display the bitboard as a 8x8 grid
+            for j in (0..8).rev() {
+                for k in 0..8 {
+                    let square_index = j * 8 + k;
+                    if current_board & (1 << square_index) != 0 {
+                        write!(f, "⬜")?;
+                    } else {
+                        write!(f, "⬛")?;
+                    }
                 }
+                writeln!(f)?;
             }
-            writeln!(f)?;
+            writeln!(f, "\n")?;
         }
 
-        writeln!(f, "\nBlack occupancy:")?;
-        for rank in (0..8).rev() {
-            for file in 0..8 {
-                let square_index = rank * 8 + file;
-                if self.sides[Side::Black as usize] & (1 << square_index) != 0 {
-                    write!(f, "⬜")?;
-                } else {
-                    write!(f, "⬛")?;
+        writeln!(f, "\n Black Bitboards");
+        for i in 0..NrOf::PIECE_TYPES {
+            let current_board = self.pieces[1][i];
+            // display the bitboard as a 8x8 grid
+            for j in (0..8).rev() {
+                for k in 0..8 {
+                    let square_index = j * 8 + k;
+                    if current_board & (1 << square_index) != 0 {
+                        write!(f, "⬜")?;
+                    } else {
+                        write!(f, "⬛")?;
+                    }
                 }
+                writeln!(f)?;
             }
-            writeln!(f)?;
+            writeln!(f, "\n")?;
         }
         writeln!(f, "\nPiece list:")?;
         for rank in (0..8).rev() {
@@ -285,7 +692,7 @@ impl Display for Board {
                 }
             }
         }
-        writeln!(f, "\nSide to move: {:?}", self.active_side())?;
+        writeln!(f, "\nSide to move: {:?}", self.get_active_side())?;
         writeln!(f, "Castling rights: {:?}", self.game_state.castling)?;
         writeln!(f, "En passant square: {:?}", self.game_state.en_passant)?;
         writeln!(f, "Halfmove clock: {}", self.game_state.half_move_clock)?;

@@ -1,11 +1,14 @@
 extern crate num_enum;
-use std::str::FromStr;
 
+use std::str::FromStr;
 use num_enum::TryFromPrimitive;
 
 
 pub type ZobristKey = u64;
 pub type Bitboard = u64;
+
+pub const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 
 
 #[repr(usize)]
@@ -29,7 +32,7 @@ pub enum Piece {
 
 
 #[repr(usize)]
-#[derive(PartialEq, Eq, TryFromPrimitive)]
+#[derive(Debug, PartialEq, Eq, TryFromPrimitive, Clone, Copy, Hash)]
 pub enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -127,6 +130,25 @@ pub enum Castling {
     BlackKing = 4,
     BlackQueen = 8,
     All = 15,
+}
+
+type CastlingPermissionSquares = [u8; NrOf::SQUARES];
+
+const CASTLING_PERMS: CastlingPermissionSquares = castling_permissions_per_square();
+const fn castling_permissions_per_square() -> CastlingPermissionSquares {
+    // All squares grant full permissions initially.
+    // Moving a piece from that square does not affect castling permissions.
+    let mut cp: CastlingPermissionSquares = [Castling::All as u8; NrOf::SQUARES];
+
+    // Disable permissions once any rook or king is moved from starting square
+    cp[Square::A1 as usize] &= !(Castling::WhiteQueen as u8);
+    cp[Square::E1 as usize] &= !(Castling::WhiteKing as u8) & !(Castling::WhiteQueen as u8);
+    cp[Square::H1 as usize] &= !(Castling::WhiteKing as u8);
+    cp[Square::A8 as usize] &= !(Castling::BlackQueen as u8);
+    cp[Square::E8 as usize] &= !(Castling::BlackKing as u8) & !(Castling::BlackQueen as u8);
+    cp[Square::H8 as usize] &= !(Castling::BlackKing as u8);
+
+    cp
 }
 
 
