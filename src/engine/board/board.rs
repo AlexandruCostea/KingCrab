@@ -80,8 +80,6 @@ impl Board {
 
         self.init_piece_list();
         self.init_zobrist_key();
-
-        // self.game_state.next_move = Move::new(0);
     }
 
     pub fn from_fen(&mut self, fen: Option<&str>) -> Result<(), FenError> {
@@ -204,30 +202,10 @@ impl Board {
                 self.game_state.half_move_clock += 1;
                 match piece {
                     Piece::King => {
-                        if self.get_active_side() == Side::White {
-                            self.game_state.castling &= !(Castling::WhiteKing as u8);
-                            self.game_state.castling &= !(Castling::WhiteQueen as u8);
-                        } else {
-                            self.game_state.castling &= !(Castling::BlackKing as u8);
-                            self.game_state.castling &= !(Castling::BlackQueen as u8);
-                        }
+                        self.clear_castling_rights_for_side(self.get_active_side());
                     },
                     Piece::Rook => {
-                        match chess_move.from {
-                            Square::A1 => {
-                                self.game_state.castling &= !(Castling::WhiteQueen as u8);
-                            },
-                            Square::H1 => {
-                                self.game_state.castling &= !(Castling::WhiteKing as u8);
-                            },
-                            Square::A8 => {
-                                self.game_state.castling &= !(Castling::BlackQueen as u8);
-                            },
-                            Square::H8 => {
-                                self.game_state.castling &= !(Castling::BlackKing as u8);
-                            },
-                            _ => (),
-                        }
+                        self.clear_castling_rights_for_square(chess_move.from);
                     },
                     _ => (),
                 }
@@ -271,16 +249,7 @@ impl Board {
                 self.piece_list[rook_pos as usize],
                 rook_pos, rook_dest);
 
-            let mut castling_rights = self.game_state.castling;
-            if self.get_active_side() == Side::White {
-                castling_rights &= !(Castling::WhiteKing as u8);
-                castling_rights &= !(Castling::WhiteQueen as u8);
-            } else {
-                castling_rights &= !(Castling::BlackKing as u8);
-                castling_rights &= !(Castling::BlackQueen as u8);
-            }
-            
-            self.set_castling_rights(castling_rights);
+            self.clear_castling_rights_for_side(self.get_active_side());
             self.game_state.half_move_clock += 1;
             self.clear_ep_square();
 
@@ -304,21 +273,7 @@ impl Board {
                     captured_piece, chess_move.to);
 
                     if captured_piece == Piece::Rook {
-                        match chess_move.to {
-                            Square::A1 => {
-                                self.game_state.castling &= !(Castling::WhiteQueen as u8);
-                            },
-                            Square::H1 => {
-                                self.game_state.castling &= !(Castling::WhiteKing as u8);
-                            },
-                            Square::A8 => {
-                                self.game_state.castling &= !(Castling::BlackQueen as u8);
-                            },
-                            Square::H8 => {
-                                self.game_state.castling &= !(Castling::BlackKing as u8);
-                            },
-                            _ => (),
-                        }
+                        self.clear_castling_rights_for_square(chess_move.to);
                     }
                 }
             }
@@ -458,6 +413,41 @@ impl Board {
         self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
         self.game_state.castling = new_rights;
         self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
+    }
+
+    fn clear_castling_rights_for_square(&mut self, rook_square: Square) {
+        let mut new_rights = self.game_state.castling;
+        match rook_square {
+            Square::A1 => {
+                new_rights &= !(Castling::WhiteQueen as u8);
+            },
+            Square::H1 => {
+                new_rights &= !(Castling::WhiteKing as u8);
+            },
+            Square::A8 => {
+                new_rights &= !(Castling::BlackQueen as u8);
+            },
+            Square::H8 => {
+                new_rights &= !(Castling::BlackKing as u8);
+            },
+            _ => (),
+        }
+        self.set_castling_rights(new_rights);
+    }
+
+    fn clear_castling_rights_for_side(&mut self, side: Side) {
+        let mut new_rights = self.game_state.castling;
+        match side {
+            Side::White => {
+                new_rights &= !(Castling::WhiteKing as u8);
+                new_rights &= !(Castling::WhiteQueen as u8);
+            },
+            Side::Black => {
+                new_rights &= !(Castling::BlackKing as u8);
+                new_rights &= !(Castling::BlackQueen as u8);
+            },
+        }
+        self.set_castling_rights(new_rights);
     }
     
 
