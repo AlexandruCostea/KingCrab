@@ -1,15 +1,14 @@
 use std::sync::Arc;
-use std::fmt::{self, Display, Error, Formatter};
+use std::fmt::{self, Display, Formatter};
 
 
-use super::chess_move::ChessMove;
-use super::definitions::{Castling, FEN_STARTING_POSITION, HALF_MOVE_MAX, SQUARE_BITBOARDS};
-use super::fen::{FenError, FenParser};
-use super::game_history::RecordedMove;
-use super::{definitions::{Bitboard, NrOf, Piece, Side, Square}, game_history::GameHistory, game_state::GameState, zobrist::ZobristKeys};
+use crate::engine::move_generator::chess_move::ChessMove;
+use crate::engine::definitions::{Castling, FEN_STARTING_POSITION, HALF_MOVE_MAX,
+    SQUARE_BITBOARDS, Bitboard, NrOf, Piece, Side, Square};
+use super::{fen::{FenError, FenParser}, game_history::{RecordedMove, GameHistory},
+    game_state::GameState, zobrist::ZobristKeys};
 
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Board {
     pub sides: [Bitboard; NrOf::SIDES],
     pub pieces: [[Bitboard; NrOf::PIECE_TYPES]; NrOf::SIDES],
@@ -665,7 +664,7 @@ impl Display for Board {
             writeln!(f, "\n")?;
         }
 
-        writeln!(f, "\n Black Bitboards");
+        writeln!(f, "\n Black Bitboards")?;
         for i in 0..NrOf::PIECE_TYPES {
             let current_board = self.pieces[1][i];
             // display the bitboard as a 8x8 grid

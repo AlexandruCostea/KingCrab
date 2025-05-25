@@ -1,6 +1,8 @@
 mod engine;
  
-use engine::board::{board::Board, chess_move::ChessMove, definitions::{Piece, Square}};
+use engine::board::{board::Board};
+use engine::move_generator::chess_move::ChessMove;
+use engine::definitions::Square;
  
  fn main() {
     let mut board: Board = Board::new();

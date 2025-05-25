@@ -1,7 +1,7 @@
-use super::definitions::{NrOf, Side, ZobristKey};
+use crate::engine::definitions::{Side, ZobristKey};
 
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub struct GameState {
     pub active_side: Side,
     pub castling: u8,

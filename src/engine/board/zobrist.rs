@@ -1,7 +1,8 @@
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 
-use super::definitions::{NrOf, Piece, Side, Square, ZobristKey};
+use crate::engine::definitions::{NrOf, Piece, Side, Square, ZobristKey};
+
 
 type PieceKeys = [[[ZobristKey; NrOf::SQUARES]; NrOf::PIECE_TYPES]; NrOf::SIDES];
 type CastlingKeys = [ZobristKey; NrOf::CASTLING_PERMISSIONS];
@@ -10,8 +11,6 @@ type EnPassantKeys = [ZobristKey; NrOf::SQUARES + 1];
 
 const RNG_SEED: [u8; 32] = [125; 32];
 
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 
 pub struct ZobristKeys {
     pub piece_keys: PieceKeys,

@@ -1,13 +1,9 @@
-pub mod definitions;
-
 pub mod board;
 
-pub mod zobrist;
+mod zobrist;
 
-pub mod game_state;
+mod game_state;
 
-pub mod game_history;
+mod game_history;
 
-pub mod fen;
-
-pub mod chess_move;
+mod fen;

@@ -1,7 +1,9 @@
-use super::{chess_move::ChessMove, definitions::{Piece, Side, Square, MAX_GAME_MOVES}, game_state::GameState};
+use super::{game_state::GameState};
+use crate::engine::move_generator::chess_move::ChessMove;
+use crate::engine::definitions::{Square, Piece, Side, MAX_GAME_MOVES};
 
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy)]
 pub struct RecordedMove {
     pub mv: ChessMove,
     pub prev_state: GameState,
@@ -26,7 +28,6 @@ impl RecordedMove {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GameHistory {
     list: [RecordedMove; MAX_GAME_MOVES],
     count: usize,

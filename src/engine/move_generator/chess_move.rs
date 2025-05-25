@@ -1,8 +1,10 @@
+use crate::engine::definitions::{Square, Piece};
+
 use bitflags::bitflags;
-use crate::engine::board::definitions::{Square, Piece};
+
 
 bitflags! {
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+    #[derive(Clone, Copy)]
     pub struct ChessMoveFlags: u8 {
         const QUIET             = 1;
         const CAPTURE           = 2;
@@ -14,7 +16,7 @@ bitflags! {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy)]
 pub struct ChessMove {
     pub from: Square,
     pub to: Square,

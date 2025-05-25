@@ -2,11 +2,16 @@ use core::fmt;
 use std::{fmt::Display, str::FromStr};
 use if_chain::if_chain;
 
-use super::{board::Board, definitions::{Square, File, Rank, Side, Piece, Castling, HALF_MOVE_MAX, MAX_GAME_MOVES, SQUARE_BITBOARDS}};
+use super::board::Board;
+use crate::engine::definitions::{Castling, File, Piece, Rank, Side, Square,
+    HALF_MOVE_MAX, MAX_GAME_MOVES, SQUARE_BITBOARDS};
 
+
+// Constants for FEN parsing
 
 const FEN_PARTS_COUNT: usize = 6;
 const PIECE_TYPES: &str = "kqrbnpKQRBNP";
+
 const EP_WHITE: [Square; 8] = [
     Square::A3, Square::B3, Square::C3, Square::D3,
     Square::E3, Square::F3, Square::G3, Square::H3,
@@ -21,31 +26,38 @@ const DASH: char = '-';
 const EM_DASH: char = '–';
 const SPACE: char = ' ';
 
+
+
+pub type SplitResult = Result<Vec<String>, FenError>;
+type FenPartParser = fn(board: &mut Board, part: &str) ->  Result<(), FenError>;
+
+
 #[derive(Debug)]
 pub enum FenError {
     IncorrectLengthError,
-    PieceSquarePartError,
-    PlaySidePartError,
-    CastlingRightsPartError,
-    EnPassantPartError,
-    HalfMovePartError,
-    FullMovePartError,
+    PieceSquarePartError(String),
+    PlaySidePartError(String),
+    CastlingRightsPartError(String),
+    EnPassantPartError(String),
+    HalfMovePartError(String),
+    FullMovePartError(String),
 }
 
 impl Display for FenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let error = match self {
-            Self::IncorrectLengthError => "Error in FEN string: Must have 6 parts",
-            Self::PieceSquarePartError => "Error in FEN pieces and squares part",
-            Self::PlaySidePartError => "Error in FEN play side part",
-            Self::CastlingRightsPartError => "Error in FEN castling rights part",
-            Self::EnPassantPartError => "Error in FEN en passant part",
-            Self::HalfMovePartError => "Error in FEN half-move part",
-            Self::FullMovePartError => "Error in FEN full-move part",
-        };
-        write!(f, "{error}")
+        match self {
+            Self::IncorrectLengthError => write!(f, "Error in FEN string: Must have 6 parts"),
+            Self::PieceSquarePartError(message) => write!(f, "Error in FEN pieces and squares part: {message}"),
+            Self::PlaySidePartError(message) => write!(f, "Error in FEN play side part: {message}"),
+            Self::CastlingRightsPartError(message) => write!(f, "Error in FEN castling rights part: {message}"),
+            Self::EnPassantPartError(message) => write!(f, "Error in FEN en passant part: {message}"),
+            Self::HalfMovePartError(message) => write!(f, "Error in FEN half-move part: {message}"),
+            Self::FullMovePartError(message) => write!(f, "Error in FEN full-move part: {message}"),
+        }
     }
 }
+
+
 
 pub struct FenParser<'board_lifetime> {
     fen_string: String,
@@ -53,16 +65,10 @@ pub struct FenParser<'board_lifetime> {
 }
 
 impl<'board_lifetime> FenParser<'board_lifetime> {
+
     pub fn new(fen_string: String, board: &'board_lifetime mut Board) -> Self {
         Self { fen_string, board }
     }
-}
-
-pub type SplitResult = Result<Vec<String>, FenError>;
-type FenPartParser = fn(board: &mut Board, part: &str) ->  Result<(), FenError>;
-
-
-impl FenParser<'_> {
 
     pub fn parse(&mut self) -> Result<(), FenError> {
         let fen_parts = Self::split_fen_string(&self.fen_string)?;
@@ -136,12 +142,16 @@ impl FenParser<'_> {
                 }
                 SPLITTER => {
                     if file != 8 {
-                        return Err(FenError::PieceSquarePartError);
+                        return Err(FenError::PieceSquarePartError(format!(
+                            "Invalid file count: {file}, expected 8"
+                        )));
                     }
                     rank -= 1;
                     file = 0;
                 }
-                _ => return Err(FenError::PieceSquarePartError),
+                _ => return Err(FenError::PieceSquarePartError(format!(
+                    "Invalid character in piece square part: {c}"
+                ))),
             }
     
             if PIECE_TYPES.contains(c) {
@@ -167,7 +177,9 @@ impl FenParser<'_> {
             }
         }
     
-        Err(FenError::PlaySidePartError)
+        Err(FenError::PlaySidePartError(format!(
+            "Invalid character in play side part: {part}"
+        )))
     }
 
     fn castling(board: &mut Board, part: &str) -> Result<(), FenError> {
@@ -180,13 +192,17 @@ impl FenParser<'_> {
                     'k' => board.game_state.castling |= Castling::BlackKing as u8,
                     'q' => board.game_state.castling |= Castling::BlackQueen as u8,
                     '-' => (),
-                    _ => return Err(FenError::CastlingRightsPartError),
+                    _ => return Err(FenError::CastlingRightsPartError(format!(
+                        "Invalid character in castling rights part: {c}"
+                    ))),
                 }
             }
             return Ok(());
         }
     
-        Err(FenError::CastlingRightsPartError)
+        Err(FenError::CastlingRightsPartError(format!(
+            "Invalid castling rights part length: {part}"
+        )))
     }
 
     fn en_passant(board: &mut Board, part: &str) -> Result<(), FenError> {
@@ -206,11 +222,15 @@ impl FenParser<'_> {
                     board.game_state.en_passant = Some(square as u8);
                     return Ok(());
                 }
-                _ => return Err(FenError::EnPassantPartError),
+                _ => return Err(FenError::EnPassantPartError(format!(
+                    "Invalid square in en passant part: {part}"
+                ))),
             };
         }
     
-        Err(FenError::EnPassantPartError)
+        Err(FenError::EnPassantPartError(format!(
+            "Invalid en passant part length or content: {part}"
+        )))
     }
 
     fn half_move_clock(board: &mut Board, part: &str) -> Result<(), FenError> {
@@ -224,7 +244,9 @@ impl FenParser<'_> {
             }
         }
 
-        Err(FenError::HalfMovePartError)
+        Err(FenError::HalfMovePartError(format!(
+            "Invalid half-move clock part: {part}"
+        )))
     }
 
     fn full_move_number(board: &mut Board, part: &str) -> Result<(), FenError> {
@@ -238,8 +260,8 @@ impl FenParser<'_> {
             }
         }
 
-        Err(FenError::FullMovePartError)
+        Err(FenError::FullMovePartError(format!(
+            "Invalid full-move number part: {part}"
+        )))
     }
-
-
 }
