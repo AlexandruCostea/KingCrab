@@ -9,7 +9,6 @@ pub struct GameState {
     pub en_passant: Option<u8>,
     pub full_move_number: u16,
     pub zobrist_key: ZobristKey,
-    // pub next_move: Move,
 }
 
 
@@ -22,7 +21,6 @@ impl GameState {
             half_move_clock: 0,
             full_move_number: 0,
             zobrist_key: 0,
-            // next_move: Move::default(),
         }
     }
 

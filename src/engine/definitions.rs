@@ -1,6 +1,6 @@
 extern crate num_enum;
 
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 use num_enum::TryFromPrimitive;
 
 
@@ -12,9 +12,8 @@ pub type Bitboard = u64;
 
 pub const FILE_BITBOARDS: [Bitboard; NrOf::FILES] = init_file_bitboards();
 pub const RANK_BITBOARDS: [Bitboard; NrOf::RANKS] = init_rank_bitboards();
-pub const SQUARE_BITBOARDS: [Bitboard; NrOf::SQUARES] = init_square_bitboards();
 
-const CASTLING_PERMS: [u8; NrOf::SQUARES] = castling_permissions_per_square();
+pub const SQUARE_BITBOARDS: [Bitboard; NrOf::SQUARES] = init_square_bitboards();
 
 pub const MAX_GAME_MOVES: usize = 1024;
 pub const HALF_MOVE_MAX: u8 = 100;
@@ -74,13 +73,6 @@ pub enum Square {
 
 #[repr(usize)]
 pub enum Rank {
-    R1 = 0,
-    R2 = 1,
-    R3 = 2,
-    R4 = 3,
-    R5 = 4,
-    R6 = 5,
-    R7 = 6,
     R8 = 7,
 }
 
@@ -88,13 +80,6 @@ pub enum Rank {
 #[repr(usize)]
 pub enum File {
     A = 0,
-    B = 1,
-    C = 2,
-    D = 3,
-    E = 4,
-    F = 5,
-    G = 6,
-    H = 7,
 }
 
 
@@ -104,7 +89,6 @@ pub enum Castling {
     WhiteQueen = 2,
     BlackKing = 4,
     BlackQueen = 8,
-    All = 15,
 }
 
 
@@ -150,6 +134,51 @@ impl FromStr for Square {
     }
 }
 
+impl Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Square::A1 => write!(f, "a1"), Square::B1 => write!(f, "b1"), Square::C1 => write!(f, "c1"),
+            Square::D1 => write!(f, "d1"), Square::E1 => write!(f, "e1"), Square::F1 => write!(f, "f1"),
+            Square::G1 => write!(f, "g1"), Square::H1 => write!(f, "h1"),
+            Square::A2 => write!(f, "a2"), Square::B2 => write!(f, "b2"), Square::C2 => write!(f, "c2"),
+            Square::D2 => write!(f, "d2"), Square::E2 => write!(f, "e2"), Square::F2 => write!(f, "f2"),
+            Square::G2 => write!(f, "g2"), Square::H2 => write!(f, "h2"),
+            Square::A3 => write!(f, "a3"), Square::B3 => write!(f, "b3"), Square::C3 => write!(f, "c3"),
+            Square::D3 => write!(f, "d3"), Square::E3 => write!(f, "e3"), Square::F3 => write!(f, "f3"),
+            Square::G3 => write!(f, "g3"), Square::H3 => write!(f, "h3"),
+            Square::A4 => write!(f, "a4"), Square::B4 => write!(f, "b4"), Square::C4 => write!(f, "c4"),
+            Square::D4 => write!(f, "d4"), Square::E4 => write!(f, "e4"), Square::F4 => write!(f, "f4"),
+            Square::G4 => write!(f, "g4"), Square::H4 => write!(f, "h4"),
+            Square::A5 => write!(f, "a5"), Square::B5 => write!(f, "b5"), Square::C5 => write!(f, "c5"),
+            Square::D5 => write!(f, "d5"), Square::E5 => write!(f, "e5"), Square::F5 => write!(f, "f5"),
+            Square::G5 => write!(f, "g5"), Square::H5 => write!(f, "h5"),
+            Square::A6 => write!(f, "a6"), Square::B6 => write!(f, "b6"), Square::C6 => write!(f, "c6"),
+            Square::D6 => write!(f, "d6"), Square::E6 => write!(f, "e6"), Square::F6 => write!(f, "f6"),
+            Square::G6 => write!(f, "g6"), Square::H6 => write!(f, "h6"),
+            Square::A7 => write!(f, "a7"), Square::B7 => write!(f, "b7"), Square::C7 => write!(f, "c7"),
+            Square::D7 => write!(f, "d7"), Square::E7 => write!(f, "e7"), Square::F7 => write!(f, "f7"),
+            Square::G7 => write!(f, "g7"), Square::H7 => write!(f, "h7"),
+            Square::A8 => write!(f, "a8"), Square::B8 => write!(f, "b8"), Square::C8 => write!(f, "c8"),
+            Square::D8 => write!(f, "d8"), Square::E8 => write!(f, "e8"), Square::F8 => write!(f, "f8"),
+            Square::G8 => write!(f, "g8"), Square::H8 => write!(f, "h8"),
+        }
+    }
+}
+
+impl Display for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Piece::King => write!(f, "K"),
+            Piece::Queen => write!(f, "Q"),
+            Piece::Rook => write!(f, "R"),
+            Piece::Bishop => write!(f, "B"),
+            Piece::Knight => write!(f, "N"),
+            Piece::Pawn => write!(f, "P"),
+            Piece::None => write!(f, "None"),
+        }
+    }
+}
+
 
 const fn init_file_bitboards() -> [Bitboard; NrOf::FILES] {
     const BITBOARD_FILE_A: Bitboard = 0x0101_0101_0101_0101;
@@ -187,20 +216,4 @@ const fn init_square_bitboards() -> [Bitboard; NrOf::SQUARES] {
     }
 
     squares
-}
-
-const fn castling_permissions_per_square() -> [u8; NrOf::SQUARES] {
-    // All squares grant full permissions initially.
-    // Moving a piece from that square does not affect castling permissions.
-    let mut cp = [Castling::All as u8; NrOf::SQUARES];
-
-    // Disable permissions once any rook or king is moved from starting square
-    cp[Square::A1 as usize] &= !(Castling::WhiteQueen as u8);
-    cp[Square::E1 as usize] &= !(Castling::WhiteKing as u8) & !(Castling::WhiteQueen as u8);
-    cp[Square::H1 as usize] &= !(Castling::WhiteKing as u8);
-    cp[Square::A8 as usize] &= !(Castling::BlackQueen as u8);
-    cp[Square::E8 as usize] &= !(Castling::BlackKing as u8) & !(Castling::BlackQueen as u8);
-    cp[Square::H8 as usize] &= !(Castling::BlackKing as u8);
-
-    cp
 }

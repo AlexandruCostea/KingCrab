@@ -1,0 +1,936 @@
+use crate::engine::definitions::{Bitboard, FILE_BITBOARDS, RANK_BITBOARDS};
+
+use rand::{prelude::*, rng};
+use std::collections::HashMap;
+pub const ROOK_BASE_ATTACKS: [Bitboard; 64] = [
+    0x0101_0101_0101_01FE, // 0
+    0x0202_0202_0202_02FD, // 1
+    0x0404_0404_0404_04FB, // 2
+    0x0808_0808_0808_08F7, // 3
+    0x1010_1010_1010_10EF, // 4
+    0x2020_2020_2020_20DF, // 5
+    0x4040_4040_4040_40BF, // 6
+    0x8080_8080_8080_807F, // 7
+    0x0101_0101_0101_FE01, // 8
+    0x0202_0202_0202_FD02, // 9
+    0x0404_0404_0404_FB04, // 10
+    0x0808_0808_0808_F708, // 11
+    0x1010_1010_1010_EF10, // 12
+    0x2020_2020_2020_DF20, // 13
+    0x4040_4040_4040_BF40, // 14
+    0x8080_8080_8080_7F80, // 15
+    0x0101_0101_01FE_0101, // 16
+    0x0202_0202_02FD_0202, // 17
+    0x0404_0404_04FB_0404, // 18
+    0x0808_0808_08F7_0808, // 19
+    0x1010_1010_10EF_1010, // 20
+    0x2020_2020_20DF_2020, // 21
+    0x4040_4040_40BF_4040, // 22
+    0x8080_8080_807F_8080, // 23
+    0x0101_0101_FE01_0101, // 24
+    0x0202_0202_FD02_0202, // 25
+    0x0404_0404_FB04_0404, // 26
+    0x0808_0808_F708_0808, // 27
+    0x1010_1010_EF10_1010, // 28
+    0x2020_2020_DF20_2020, // 29
+    0x4040_4040_BF40_4040, // 30
+    0x8080_8080_7F80_8080, // 31
+    0x0101_01FE_0101_0101, // 32
+    0x0202_02FD_0202_0202, // 33
+    0x0404_04FB_0404_0404, // 34
+    0x0808_08F7_0808_0808, // 35
+    0x1010_10EF_1010_1010, // 36
+    0x2020_20DF_2020_2020, // 37
+    0x4040_40BF_4040_4040, // 38
+    0x8080_807F_8080_8080, // 39
+    0x0101_FE01_0101_0101, // 40
+    0x0202_FD02_0202_0202, // 41
+    0x0404_FB04_0404_0404, // 42
+    0x0808_F708_0808_0808, // 43
+    0x1010_EF10_1010_1010, // 44
+    0x2020_DF20_2020_2020, // 45
+    0x4040_BF40_4040_4040, // 46
+    0x8080_7F80_8080_8080, // 47
+    0x01FE_0101_0101_0101, // 48
+    0x02FD_0202_0202_0202, // 49
+    0x04FB_0404_0404_0404, // 50
+    0x08F7_0808_0808_0808, // 51
+    0x10EF_1010_1010_1010, // 52
+    0x20DF_2020_2020_2020, // 53
+    0x40BF_4040_4040_4040, // 54
+    0x807F_8080_8080_8080, // 55
+    0xFE01_0101_0101_0101, // 56
+    0xFD02_0202_0202_0202, // 57
+    0xFB04_0404_0404_0404, // 58
+    0xF708_0808_0808_0808, // 59
+    0xEF10_1010_1010_1010, // 60
+    0xDF20_2020_2020_2020, // 61
+    0xBF40_4040_4040_4040, // 62
+    0x7F80_8080_8080_8080, // 63
+];
+
+pub const BISHOP_BASE_ATTACKS: [Bitboard; 64] = [
+    0x8040_2010_0804_0200, // 0
+    0x0080_4020_1008_0500, // 1
+    0x0000_8040_2011_0A00, // 2
+    0x0000_0080_4122_1400, // 3
+    0x0000_0001_8244_2800, // 4
+    0x0000_0102_0488_5000, // 5
+    0x0001_0204_0810_A000, // 6
+    0x0102_0408_1020_4000, // 7
+    0x4020_1008_0402_0002, // 8
+    0x8040_2010_0805_0005, // 9
+    0x0080_4020_110A_000A, // 10
+    0x0000_8041_2214_0014, // 11
+    0x0000_0182_4428_0028, // 12
+    0x0001_0204_8850_0050, // 13
+    0x0102_0408_10A0_00A0, // 14
+    0x0204_0810_2040_0040, // 15
+    0x2010_0804_0200_0204, // 16
+    0x4020_1008_0500_0508, // 17
+    0x8040_2011_0A00_0A11, // 18
+    0x0080_4122_1400_1422, // 19
+    0x0001_8244_2800_2844, // 20
+    0x0102_0488_5000_5088, // 21
+    0x0204_0810_A000_A010, // 22
+    0x0408_1020_4000_4020, // 23
+    0x1008_0402_0002_0408, // 24
+    0x2010_0805_0005_0810, // 25
+    0x4020_110A_000A_1120, // 26
+    0x8041_2214_0014_2241, // 27
+    0x0182_4428_0028_4482, // 28
+    0x0204_8850_0050_8804, // 29
+    0x0408_10A0_00A0_1008, // 30
+    0x0810_2040_0040_2010, // 31
+    0x0804_0200_0204_0810, // 32
+    0x1008_0500_0508_1020, // 33
+    0x2011_0A00_0A11_2040, // 34
+    0x4122_1400_1422_4180, // 35
+    0x8244_2800_2844_8201, // 36
+    0x0488_5000_5088_0402, // 37
+    0x0810_A000_A010_0804, // 38
+    0x1020_4000_4020_1008, // 39
+    0x0402_0002_0408_1020, // 40
+    0x0805_0005_0810_2040, // 41
+    0x110A_000A_1120_4080, // 42
+    0x2214_0014_2241_8000, // 43
+    0x4428_0028_4482_0100, // 44
+    0x8850_0050_8804_0201, // 45
+    0x10A0_00A0_1008_0402, // 46
+    0x2040_0040_2010_0804, // 47
+    0x0200_0204_0810_2040, // 48
+    0x0500_0508_1020_4080, // 49
+    0x0A00_0A11_2040_8000, // 50
+    0x1400_1422_4180_0000, // 51
+    0x2800_2844_8201_0000, // 52
+    0x5000_5088_0402_0100, // 53
+    0xA000_A010_0804_0201, // 54
+    0x4000_4020_1008_0402, // 55
+    0x0002_0408_1020_4080, // 56
+    0x0005_0810_2040_8000, // 57
+    0x000A_1120_4080_0000, // 58
+    0x0014_2241_8000_0000, // 59
+    0x0028_4482_0100_0000, // 60
+    0x0050_8804_0201_0000, // 61
+    0x00A0_1008_0402_0100, // 62
+    0x0040_2010_0804_0201, // 63
+];
+
+pub const QUEEN_BASE_ATTACKS: [Bitboard; 64] = [
+    ROOK_BASE_ATTACKS[0] | BISHOP_BASE_ATTACKS[0],
+    ROOK_BASE_ATTACKS[1] | BISHOP_BASE_ATTACKS[1],
+    ROOK_BASE_ATTACKS[2] | BISHOP_BASE_ATTACKS[2],
+    ROOK_BASE_ATTACKS[3] | BISHOP_BASE_ATTACKS[3],
+    ROOK_BASE_ATTACKS[4] | BISHOP_BASE_ATTACKS[4],
+    ROOK_BASE_ATTACKS[5] | BISHOP_BASE_ATTACKS[5],
+    ROOK_BASE_ATTACKS[6] | BISHOP_BASE_ATTACKS[6],
+    ROOK_BASE_ATTACKS[7] | BISHOP_BASE_ATTACKS[7],
+    ROOK_BASE_ATTACKS[8] | BISHOP_BASE_ATTACKS[8],
+    ROOK_BASE_ATTACKS[9] | BISHOP_BASE_ATTACKS[9],
+    ROOK_BASE_ATTACKS[10] | BISHOP_BASE_ATTACKS[10],
+    ROOK_BASE_ATTACKS[11] | BISHOP_BASE_ATTACKS[11],
+    ROOK_BASE_ATTACKS[12] | BISHOP_BASE_ATTACKS[12],
+    ROOK_BASE_ATTACKS[13] | BISHOP_BASE_ATTACKS[13],
+    ROOK_BASE_ATTACKS[14] | BISHOP_BASE_ATTACKS[14],
+    ROOK_BASE_ATTACKS[15] | BISHOP_BASE_ATTACKS[15],
+    ROOK_BASE_ATTACKS[16] | BISHOP_BASE_ATTACKS[16],
+    ROOK_BASE_ATTACKS[17] | BISHOP_BASE_ATTACKS[17],
+    ROOK_BASE_ATTACKS[18] | BISHOP_BASE_ATTACKS[18],
+    ROOK_BASE_ATTACKS[19] | BISHOP_BASE_ATTACKS[19],
+    ROOK_BASE_ATTACKS[20] | BISHOP_BASE_ATTACKS[20],
+    ROOK_BASE_ATTACKS[21] | BISHOP_BASE_ATTACKS[21],
+    ROOK_BASE_ATTACKS[22] | BISHOP_BASE_ATTACKS[22],
+    ROOK_BASE_ATTACKS[23] | BISHOP_BASE_ATTACKS[23],
+    ROOK_BASE_ATTACKS[24] | BISHOP_BASE_ATTACKS[24],
+    ROOK_BASE_ATTACKS[25] | BISHOP_BASE_ATTACKS[25],
+    ROOK_BASE_ATTACKS[26] | BISHOP_BASE_ATTACKS[26],
+    ROOK_BASE_ATTACKS[27] | BISHOP_BASE_ATTACKS[27],
+    ROOK_BASE_ATTACKS[28] | BISHOP_BASE_ATTACKS[28],
+    ROOK_BASE_ATTACKS[29] | BISHOP_BASE_ATTACKS[29],
+    ROOK_BASE_ATTACKS[30] | BISHOP_BASE_ATTACKS[30],
+    ROOK_BASE_ATTACKS[31] | BISHOP_BASE_ATTACKS[31],
+    ROOK_BASE_ATTACKS[32] | BISHOP_BASE_ATTACKS[32],
+    ROOK_BASE_ATTACKS[33] | BISHOP_BASE_ATTACKS[33],
+    ROOK_BASE_ATTACKS[34] | BISHOP_BASE_ATTACKS[34],
+    ROOK_BASE_ATTACKS[35] | BISHOP_BASE_ATTACKS[35],
+    ROOK_BASE_ATTACKS[36] | BISHOP_BASE_ATTACKS[36],
+    ROOK_BASE_ATTACKS[37] | BISHOP_BASE_ATTACKS[37],
+    ROOK_BASE_ATTACKS[38] | BISHOP_BASE_ATTACKS[38],
+    ROOK_BASE_ATTACKS[39] | BISHOP_BASE_ATTACKS[39],
+    ROOK_BASE_ATTACKS[40] | BISHOP_BASE_ATTACKS[40],
+    ROOK_BASE_ATTACKS[41] | BISHOP_BASE_ATTACKS[41],
+    ROOK_BASE_ATTACKS[42] | BISHOP_BASE_ATTACKS[42],
+    ROOK_BASE_ATTACKS[43] | BISHOP_BASE_ATTACKS[43],
+    ROOK_BASE_ATTACKS[44] | BISHOP_BASE_ATTACKS[44],
+    ROOK_BASE_ATTACKS[45] | BISHOP_BASE_ATTACKS[45],
+    ROOK_BASE_ATTACKS[46] | BISHOP_BASE_ATTACKS[46],
+    ROOK_BASE_ATTACKS[47] | BISHOP_BASE_ATTACKS[47],
+    ROOK_BASE_ATTACKS[48] | BISHOP_BASE_ATTACKS[48],
+    ROOK_BASE_ATTACKS[49] | BISHOP_BASE_ATTACKS[49],
+    ROOK_BASE_ATTACKS[50] | BISHOP_BASE_ATTACKS[50],
+    ROOK_BASE_ATTACKS[51] | BISHOP_BASE_ATTACKS[51],
+    ROOK_BASE_ATTACKS[52] | BISHOP_BASE_ATTACKS[52],
+    ROOK_BASE_ATTACKS[53] | BISHOP_BASE_ATTACKS[53],
+    ROOK_BASE_ATTACKS[54] | BISHOP_BASE_ATTACKS[54],
+    ROOK_BASE_ATTACKS[55] | BISHOP_BASE_ATTACKS[55],
+    ROOK_BASE_ATTACKS[56] | BISHOP_BASE_ATTACKS[56],
+    ROOK_BASE_ATTACKS[57] | BISHOP_BASE_ATTACKS[57],
+    ROOK_BASE_ATTACKS[58] | BISHOP_BASE_ATTACKS[58],
+    ROOK_BASE_ATTACKS[59] | BISHOP_BASE_ATTACKS[59],
+    ROOK_BASE_ATTACKS[60] | BISHOP_BASE_ATTACKS[60],
+    ROOK_BASE_ATTACKS[61] | BISHOP_BASE_ATTACKS[61],
+    ROOK_BASE_ATTACKS[62] | BISHOP_BASE_ATTACKS[62],
+    ROOK_BASE_ATTACKS[63] | BISHOP_BASE_ATTACKS[63],
+];
+
+pub const KNIGHT_BASE_ATTACKS: [Bitboard; 64] = [
+    0x0000_0000_0002_0400, // 0
+    0x0000_0000_0005_0800, // 1
+    0x0000_0000_000A_1100, // 2
+    0x0000_0000_0014_2200, // 3
+    0x0000_0000_0028_4400, // 4
+    0x0000_0000_0050_8800, // 5
+    0x0000_0000_00A0_1000, // 6
+    0x0000_0000_0040_2000, // 7
+    0x0000_0000_0204_0004, // 8
+    0x0000_0000_0508_0008, // 9
+    0x0000_0000_0A11_0011, // 10
+    0x0000_0000_1422_0022, // 11
+    0x0000_0000_2844_0044, // 12
+    0x0000_0000_5088_0088, // 13
+    0x0000_0000_A010_0010, // 14
+    0x0000_0000_4020_0020, // 15
+    0x0000_0002_0400_0402, // 16
+    0x0000_0005_0800_0805, // 17
+    0x0000_000A_1100_110A, // 18
+    0x0000_0014_2200_2214, // 19
+    0x0000_0028_4400_4428, // 20
+    0x0000_0050_8800_8850, // 21
+    0x0000_00A0_1000_10A0, // 22
+    0x0000_0040_2000_2040, // 23
+    0x0000_0204_0004_0200, // 24
+    0x0000_0508_0008_0500, // 25
+    0x0000_0A11_0011_0A00, // 26
+    0x0000_1422_0022_1400, // 27
+    0x0000_2844_0044_2800, // 28
+    0x0000_5088_0088_5000, // 29
+    0x0000_A010_0010_A000, // 30
+    0x0000_4020_0020_4000, // 31
+    0x0002_0400_0402_0000, // 32
+    0x0005_0800_0805_0000, // 33
+    0x000A_1100_110A_0000, // 34
+    0x0014_2200_2214_0000, // 35
+    0x0028_4400_4428_0000, // 36
+    0x0050_8800_8850_0000, // 37
+    0x00A0_1000_10A0_0000, // 38
+    0x0040_2000_2040_0000, // 39
+    0x0204_0004_0200_0000, // 40
+    0x0508_0008_0500_0000, // 41
+    0x0A11_0011_0A00_0000, // 42
+    0x1422_0022_1400_0000, // 43
+    0x2844_0044_2800_0000, // 44
+    0x5088_0088_5000_0000, // 45
+    0xA010_0010_A000_0000, // 46
+    0x4020_0020_4000_0000, // 47
+    0x0400_0402_0000_0000, // 48
+    0x0800_0805_0000_0000, // 49
+    0x1100_110A_0000_0000, // 50
+    0x2200_2214_0000_0000, // 51
+    0x4400_4428_0000_0000, // 52
+    0x8800_8850_0000_0000, // 53
+    0x1000_10A0_0000_0000, // 54
+    0x2000_2040_0000_0000, // 55
+    0x0004_0200_0000_0000, // 56
+    0x0008_0500_0000_0000, // 57
+    0x0011_0A00_0000_0000, // 58
+    0x0022_1400_0000_0000, // 59
+    0x0044_2800_0000_0000, // 60
+    0x0088_5000_0000_0000, // 61
+    0x0010_A000_0000_0000, // 62
+    0x0020_4000_0000_0000, // 63
+];
+
+pub const KING_BASE_ATTACKS: [Bitboard; 64] = [
+    0x0000_0000_0000_0302, // 0
+    0x0000_0000_0000_0705, // 1
+    0x0000_0000_0000_0E0A, // 2
+    0x0000_0000_0000_1C14, // 3
+    0x0000_0000_0000_3828, // 4
+    0x0000_0000_0000_7050, // 5
+    0x0000_0000_0000_E0A0, // 6
+    0x0000_0000_0000_C040, // 7
+    0x0000_0000_0003_0203, // 8
+    0x0000_0000_0007_0507, // 9
+    0x0000_0000_000E_0A0E, // 10
+    0x0000_0000_001C_141C, // 11
+    0x0000_0000_0038_2838, // 12
+    0x0000_0000_0070_5070, // 13
+    0x0000_0000_00E0_A0E0, // 14
+    0x0000_0000_00C0_40C0, // 15
+    0x0000_0000_0302_0300, // 16
+    0x0000_0000_0705_0700, // 17
+    0x0000_0000_0E0A_0E00, // 18
+    0x0000_0000_1C14_1C00, // 19
+    0x0000_0000_3828_3800, // 20
+    0x0000_0000_7050_7000, // 21
+    0x0000_0000_E0A0_E000, // 22
+    0x0000_0000_C040_C000, // 23
+    0x0000_0003_0203_0000, // 24
+    0x0000_0007_0507_0000, // 25
+    0x0000_000E_0A0E_0000, // 26
+    0x0000_001C_141C_0000, // 27
+    0x0000_0038_2838_0000, // 28
+    0x0000_0070_5070_0000, // 29
+    0x0000_00E0_A0E0_0000, // 30
+    0x0000_00C0_40C0_0000, // 31
+    0x0000_0302_0300_0000, // 32
+    0x0000_0705_0700_0000, // 33
+    0x0000_0E0A_0E00_0000, // 34
+    0x0000_1C14_1C00_0000, // 35
+    0x0000_3828_3800_0000, // 36
+    0x0000_7050_7000_0000, // 37
+    0x0000_E0A0_E000_0000, // 38
+    0x0000_C040_C000_0000, // 39
+    0x0003_0203_0000_0000, // 40
+    0x0007_0507_0000_0000, // 41
+    0x000E_0A0E_0000_0000, // 42
+    0x001C_141C_0000_0000, // 43
+    0x0038_2838_0000_0000, // 44
+    0x0070_5070_0000_0000, // 45
+    0x00E0_A0E0_0000_0000, // 46
+    0x00C0_40C0_0000_0000, // 47
+    0x0302_0300_0000_0000, // 48
+    0x0705_0700_0000_0000, // 49
+    0x0E0A_0E00_0000_0000, // 50
+    0x1C14_1C00_0000_0000, // 51
+    0x3828_3800_0000_0000, // 52
+    0x7050_7000_0000_0000, // 53
+    0xE0A0_E000_0000_0000, // 54
+    0xC040_C000_0000_0000, // 55
+    0x0203_0000_0000_0000, // 56
+    0x0507_0000_0000_0000, // 57
+    0x0A0E_0000_0000_0000, // 58
+    0x141C_0000_0000_0000, // 59
+    0x2838_0000_0000_0000, // 60
+    0x5070_0000_0000_0000, // 61
+    0xA0E0_0000_0000_0000, // 62
+    0x40C0_0000_0000_0000, // 63
+];
+
+pub const PAWN_WHITE_ATTACKS: [Bitboard; 64] = [
+    0x0000_0000_0000_0200, // 0
+    0x0000_0000_0000_0500, // 1
+    0x0000_0000_0000_0A00, // 2
+    0x0000_0000_0000_1400, // 3
+    0x0000_0000_0000_2800, // 4
+    0x0000_0000_0000_5000, // 5
+    0x0000_0000_0000_A000, // 6
+    0x0000_0000_0000_4000, // 7
+    0x0000_0000_0002_0000, // 8
+    0x0000_0000_0005_0000, // 9
+    0x0000_0000_000A_0000, // 10
+    0x0000_0000_0014_0000, // 11
+    0x0000_0000_0028_0000, // 12
+    0x0000_0000_0050_0000, // 13
+    0x0000_0000_00A0_0000, // 14
+    0x0000_0000_0040_0000, // 15
+    0x0000_0000_0200_0000, // 16
+    0x0000_0000_0500_0000, // 17
+    0x0000_0000_0A00_0000, // 18
+    0x0000_0000_1400_0000, // 19
+    0x0000_0000_2800_0000, // 20
+    0x0000_0000_5000_0000, // 21
+    0x0000_0000_A000_0000, // 22
+    0x0000_0000_4000_0000, // 23
+    0x0000_0002_0000_0000, // 24
+    0x0000_0005_0000_0000, // 25
+    0x0000_000A_0000_0000, // 26
+    0x0000_0014_0000_0000, // 27
+    0x0000_0028_0000_0000, // 28
+    0x0000_0050_0000_0000, // 29
+    0x0000_00A0_0000_0000, // 30
+    0x0000_0040_0000_0000, // 31
+    0x0000_0200_0000_0000, // 32
+    0x0000_0500_0000_0000, // 33
+    0x0000_0A00_0000_0000, // 34
+    0x0000_1400_0000_0000, // 35
+    0x0000_2800_0000_0000, // 36
+    0x0000_5000_0000_0000, // 37
+    0x0000_A000_0000_0000, // 38
+    0x0000_4000_0000_0000, // 39
+    0x0002_0000_0000_0000, // 40
+    0x0005_0000_0000_0000, // 41
+    0x000A_0000_0000_0000, // 42
+    0x0014_0000_0000_0000, // 43
+    0x0028_0000_0000_0000, // 44
+    0x0050_0000_0000_0000, // 45
+    0x00A0_0000_0000_0000, // 46
+    0x0040_0000_0000_0000, // 47
+    0x0200_0000_0000_0000, // 48
+    0x0500_0000_0000_0000, // 49
+    0x0A00_0000_0000_0000, // 50
+    0x1400_0000_0000_0000, // 51
+    0x2800_0000_0000_0000, // 52
+    0x5000_0000_0000_0000, // 53
+    0xA000_0000_0000_0000, // 54
+    0x4000_0000_0000_0000, // 55
+    0x0000_0000_0000_0000, // 56
+    0x0000_0000_0000_0000, // 57
+    0x0000_0000_0000_0000, // 58
+    0x0000_0000_0000_0000, // 59
+    0x0000_0000_0000_0000, // 60
+    0x0000_0000_0000_0000, // 61
+    0x0000_0000_0000_0000, // 62
+    0x0000_0000_0000_0000, // 63
+];
+
+pub const PAWN_BLACK_ATTACKS: [Bitboard; 64] = [
+    0x0000_0000_0000_0000, // 0
+    0x0000_0000_0000_0000, // 1
+    0x0000_0000_0000_0000, // 2
+    0x0000_0000_0000_0000, // 3
+    0x0000_0000_0000_0000, // 4
+    0x0000_0000_0000_0000, // 5
+    0x0000_0000_0000_0000, // 6
+    0x0000_0000_0000_0000, // 7
+    0x0000_0000_0000_0002, // 8
+    0x0000_0000_0000_0005, // 9
+    0x0000_0000_0000_000A, // 10
+    0x0000_0000_0000_0014, // 11
+    0x0000_0000_0000_0028, // 12
+    0x0000_0000_0000_0050, // 13
+    0x0000_0000_0000_00A0, // 14
+    0x0000_0000_0000_0040, // 15
+    0x0000_0000_0000_0200, // 16
+    0x0000_0000_0000_0500, // 17
+    0x0000_0000_0000_0A00, // 18
+    0x0000_0000_0000_1400, // 19
+    0x0000_0000_0000_2800, // 20
+    0x0000_0000_0000_5000, // 21
+    0x0000_0000_0000_A000, // 22
+    0x0000_0000_0000_4000, // 23
+    0x0000_0000_0002_0000, // 24
+    0x0000_0000_0005_0000, // 25
+    0x0000_0000_000A_0000, // 26
+    0x0000_0000_0014_0000, // 27
+    0x0000_0000_0028_0000, // 28
+    0x0000_0000_0050_0000, // 29
+    0x0000_0000_00A0_0000, // 30
+    0x0000_0000_0040_0000, // 31
+    0x0000_0000_0200_0000, // 32
+    0x0000_0000_0500_0000, // 33
+    0x0000_0000_0A00_0000, // 34
+    0x0000_0000_1400_0000, // 35
+    0x0000_0000_2800_0000, // 36
+    0x0000_0000_5000_0000, // 37
+    0x0000_0000_A000_0000, // 38
+    0x0000_0000_4000_0000, // 39
+    0x0000_0002_0000_0000, // 40
+    0x0000_0005_0000_0000, // 41
+    0x0000_000A_0000_0000, // 42
+    0x0000_0014_0000_0000, // 43
+    0x0000_0028_0000_0000, // 44
+    0x0000_0050_0000_0000, // 45
+    0x0000_00A0_0000_0000, // 46
+    0x0000_0040_0000_0000, // 47
+    0x0000_0200_0000_0000, // 48
+    0x0000_0500_0000_0000, // 49
+    0x0000_0A00_0000_0000, // 50
+    0x0000_1400_0000_0000, // 51
+    0x0000_2800_0000_0000, // 52
+    0x0000_5000_0000_0000, // 53
+    0x0000_A000_0000_0000, // 54
+    0x0000_4000_0000_0000, // 55
+    0x0002_0000_0000_0000, // 56
+    0x0005_0000_0000_0000, // 57
+    0x000A_0000_0000_0000, // 58
+    0x0014_0000_0000_0000, // 59
+    0x0028_0000_0000_0000, // 60
+    0x0050_0000_0000_0000, // 61
+    0x00A0_0000_0000_0000, // 62
+    0x0040_0000_0000_0000, // 63
+];
+
+pub const ROOK_BLOCKER_MASKS: [Bitboard; 64] = [
+    0x0001_0101_0101_017E,
+    0x0002_0202_0202_027C,
+    0x0004_0404_0404_047A,
+    0x0008_0808_0808_0876,
+    0x0010_1010_1010_106E,
+    0x0020_2020_2020_205E,
+    0x0040_4040_4040_403E,
+    0x0080_8080_8080_807E,
+    0x0001_0101_0101_7E00,
+    0x0002_0202_0202_7C00,
+    0x0004_0404_0404_7A00,
+    0x0008_0808_0808_7600,
+    0x0010_1010_1010_6E00,
+    0x0020_2020_2020_5E00,
+    0x0040_4040_4040_3E00,
+    0x0080_8080_8080_7E00,
+    0x0001_0101_017E_0100,
+    0x0002_0202_027C_0200,
+    0x0004_0404_047A_0400,
+    0x0008_0808_0876_0800,
+    0x0010_1010_106E_1000,
+    0x0020_2020_205E_2000,
+    0x0040_4040_403E_4000,
+    0x0080_8080_807E_8000,
+    0x0001_0101_7E01_0100,
+    0x0002_0202_7C02_0200,
+    0x0004_0404_7A04_0400,
+    0x0008_0808_7608_0800,
+    0x0010_1010_6E10_1000,
+    0x0020_2020_5E20_2000,
+    0x0040_4040_3E40_4000,
+    0x0080_8080_7E80_8000,
+    0x0001_017E_0101_0100,
+    0x0002_027C_0202_0200,
+    0x0004_047A_0404_0400,
+    0x0008_0876_0808_0800,
+    0x0010_106E_1010_1000,
+    0x0020_205E_2020_2000,
+    0x0040_403E_4040_4000,
+    0x0080_807E_8080_8000,
+    0x0001_7E01_0101_0100,
+    0x0002_7C02_0202_0200,
+    0x0004_7A04_0404_0400,
+    0x0008_7608_0808_0800,
+    0x0010_6E10_1010_1000,
+    0x0020_5E20_2020_2000,
+    0x0040_3E40_4040_4000,
+    0x0080_7E80_8080_8000,
+    0x007E_0101_0101_0100,
+    0x007C_0202_0202_0200,
+    0x007A_0404_0404_0400,
+    0x0076_0808_0808_0800,
+    0x006E_1010_1010_1000,
+    0x005E_2020_2020_2000,
+    0x003E_4040_4040_4000,
+    0x007E_8080_8080_8000,
+    0x7E01_0101_0101_0100,
+    0x7C02_0202_0202_0200,
+    0x7A04_0404_0404_0400,
+    0x7608_0808_0808_0800,
+    0x6E10_1010_1010_1000,
+    0x5E20_2020_2020_2000,
+    0x3E40_4040_4040_4000,
+    0x7E80_8080_8080_8000
+];
+
+const EDGE_MASK: Bitboard = FILE_BITBOARDS[0]
+    | FILE_BITBOARDS[7]
+    | RANK_BITBOARDS[0]
+    | RANK_BITBOARDS[7];
+
+
+pub const BISHOP_BLOCKER_MASKS: [Bitboard; 64] = [
+    BISHOP_BASE_ATTACKS[0] & !EDGE_MASK, // 0
+    BISHOP_BASE_ATTACKS[1] & !EDGE_MASK, // 1
+    BISHOP_BASE_ATTACKS[2] & !EDGE_MASK, // 2
+    BISHOP_BASE_ATTACKS[3] & !EDGE_MASK, // 3
+    BISHOP_BASE_ATTACKS[4] & !EDGE_MASK, // 4
+    BISHOP_BASE_ATTACKS[5] & !EDGE_MASK, // 5
+    BISHOP_BASE_ATTACKS[6] & !EDGE_MASK, // 6
+    BISHOP_BASE_ATTACKS[7] & !EDGE_MASK, // 7
+    BISHOP_BASE_ATTACKS[8] & !EDGE_MASK, // 8
+    BISHOP_BASE_ATTACKS[9] & !EDGE_MASK, // 9
+    BISHOP_BASE_ATTACKS[10] & !EDGE_MASK, // 10
+    BISHOP_BASE_ATTACKS[11] & !EDGE_MASK, // 11
+    BISHOP_BASE_ATTACKS[12] & !EDGE_MASK, // 12
+    BISHOP_BASE_ATTACKS[13] & !EDGE_MASK, // 13
+    BISHOP_BASE_ATTACKS[14] & !EDGE_MASK, // 14
+    BISHOP_BASE_ATTACKS[15] & !EDGE_MASK, // 15
+    BISHOP_BASE_ATTACKS[16] & !EDGE_MASK, // 16
+    BISHOP_BASE_ATTACKS[17] & !EDGE_MASK, // 17
+    BISHOP_BASE_ATTACKS[18] & !EDGE_MASK, // 18
+    BISHOP_BASE_ATTACKS[19] & !EDGE_MASK, // 19
+    BISHOP_BASE_ATTACKS[20] & !EDGE_MASK, // 20
+    BISHOP_BASE_ATTACKS[21] & !EDGE_MASK, // 21
+    BISHOP_BASE_ATTACKS[22] & !EDGE_MASK, // 22
+    BISHOP_BASE_ATTACKS[23] & !EDGE_MASK, // 23
+    BISHOP_BASE_ATTACKS[24] & !EDGE_MASK, // 24
+    BISHOP_BASE_ATTACKS[25] & !EDGE_MASK, // 25
+    BISHOP_BASE_ATTACKS[26] & !EDGE_MASK, // 26
+    BISHOP_BASE_ATTACKS[27] & !EDGE_MASK, // 27
+    BISHOP_BASE_ATTACKS[28] & !EDGE_MASK, // 28
+    BISHOP_BASE_ATTACKS[29] & !EDGE_MASK, // 29
+    BISHOP_BASE_ATTACKS[30] & !EDGE_MASK, // 30
+    BISHOP_BASE_ATTACKS[31] & !EDGE_MASK, // 31
+    BISHOP_BASE_ATTACKS[32] & !EDGE_MASK, // 32
+    BISHOP_BASE_ATTACKS[33] & !EDGE_MASK, // 33
+    BISHOP_BASE_ATTACKS[34] & !EDGE_MASK, // 34
+    BISHOP_BASE_ATTACKS[35] & !EDGE_MASK, // 35
+    BISHOP_BASE_ATTACKS[36] & !EDGE_MASK, // 36
+    BISHOP_BASE_ATTACKS[37] & !EDGE_MASK, // 37
+    BISHOP_BASE_ATTACKS[38] & !EDGE_MASK, // 38
+    BISHOP_BASE_ATTACKS[39] & !EDGE_MASK, // 39
+    BISHOP_BASE_ATTACKS[40] & !EDGE_MASK, // 40
+    BISHOP_BASE_ATTACKS[41] & !EDGE_MASK, // 41
+    BISHOP_BASE_ATTACKS[42] & !EDGE_MASK, // 42
+    BISHOP_BASE_ATTACKS[43] & !EDGE_MASK, // 43
+    BISHOP_BASE_ATTACKS[44] & !EDGE_MASK, // 44
+    BISHOP_BASE_ATTACKS[45] & !EDGE_MASK, // 45
+    BISHOP_BASE_ATTACKS[46] & !EDGE_MASK, // 46
+    BISHOP_BASE_ATTACKS[47] & !EDGE_MASK, // 47
+    BISHOP_BASE_ATTACKS[48] & !EDGE_MASK, // 48
+    BISHOP_BASE_ATTACKS[49] & !EDGE_MASK, // 49
+    BISHOP_BASE_ATTACKS[50] & !EDGE_MASK, // 50
+    BISHOP_BASE_ATTACKS[51] & !EDGE_MASK, // 51
+    BISHOP_BASE_ATTACKS[52] & !EDGE_MASK, // 52
+    BISHOP_BASE_ATTACKS[53] & !EDGE_MASK, // 53
+    BISHOP_BASE_ATTACKS[54] & !EDGE_MASK, // 54
+    BISHOP_BASE_ATTACKS[55] & !EDGE_MASK, // 55
+    BISHOP_BASE_ATTACKS[56] & !EDGE_MASK, // 56
+    BISHOP_BASE_ATTACKS[57] & !EDGE_MASK, // 57
+    BISHOP_BASE_ATTACKS[58] & !EDGE_MASK, // 58
+    BISHOP_BASE_ATTACKS[59] & !EDGE_MASK, // 59
+    BISHOP_BASE_ATTACKS[60] & !EDGE_MASK, // 60
+    BISHOP_BASE_ATTACKS[61] & !EDGE_MASK, // 61
+    BISHOP_BASE_ATTACKS[62] & !EDGE_MASK, // 62
+    BISHOP_BASE_ATTACKS[63] & !EDGE_MASK, // 63
+];
+
+pub const ROOK_MAGICS: [Bitboard; 64] = [
+    0x80004000908020,
+    0xc40004120001006,
+    0x2100090140112000,
+    0x2080280070008024,
+    0x200140910200200,
+    0x1100140042210008,
+    0x2080010040800600,
+    0xa00050400802042,
+    0x4001800081400020,
+    0xd010804008200080,
+    0x1002003110042,
+    0x1054800800100080,
+    0x2c2000601201008,
+    0x102000600259008,
+    0x802000d08040200,
+    0x19002082004b00,
+    0x8029808000214010,
+    0x2010004040006008,
+    0x4410020010113,
+    0x8810030011610088,
+    0xa0110005000800,
+    0x11040801204c1040,
+    0x10100400080a2990,
+    0x80002000944812c,
+    0xc0208280004000,
+    0x834001002b0180,
+    0x1000450100102002,
+    0x1400a00220030,
+    0x1041021100140800,
+    0x2005200081004,
+    0x142008200480104,
+    0x5008a00005401,
+    0x290400830800080,
+    0x1040110081002040,
+    0x1001108a802000,
+    0x10426202000810,
+    0x3140241101000800,
+    0x40080800200,
+    0x2010885014000201,
+    0x400310442000184,
+    0x2200234000808000,
+    0x4113c200810e0020,
+    0xa102082020040,
+    0x20201001010028,
+    0x404112801010004,
+    0x202001409020030,
+    0x5a0901208040001,
+    0x4008004484060001,
+    0x1248000c00480,
+    0x2090042004400040,
+    0x30001120068080,
+    0x210a80081100380,
+    0x81001005480100,
+    0x101000a04000900,
+    0x8018300201080400,
+    0x20110400408200,
+    0x8025044410208001,
+    0x48120088410022,
+    0x2080090012200041,
+    0x1105601001000409,
+    0x5006002010484482,
+    0x215006c00028801,
+    0x2200aa10130804,
+    0x80810403418022
+];
+
+pub const BISHOP_MAGICS: [Bitboard; 64] = [
+    0x10222004042180a0,
+    0x40810008200c041,
+    0x10451441000008,
+    0x202208200104b90,
+    0x1002021000000000,
+    0x10920d0400006,
+    0xa403280210040400,
+    0x20080cd00a02010,
+    0x222100c1800a421,
+    0x80c0200840858180,
+    0x2009200a2020018,
+    0x10282080201205,
+    0x8004040460000800,
+    0x1000809010680000,
+    0x80340308229001,
+    0x18800410407a020,
+    0x1008006508082808,
+    0x102000430240900,
+    0x8041000802108,
+    0x4008010482004000,
+    0x41c008080a061c0,
+    0x8001000280600600,
+    0x104002101080b21,
+    0x8012224500821000,
+    0x402048000c080800,
+    0x814601b90011100,
+    0x4020404208120042,
+    0x3208080000e02020,
+    0x46820044010410,
+    0x8010048081080100,
+    0x140e020000c80648,
+    0x104014240820880,
+    0x8001044000101008,
+    0x2001011000200404,
+    0x44048099000a0,
+    0x40000e0080180080,
+    0x124030200240094,
+    0x90a0180880818,
+    0x4048082040440,
+    0xc03004688220208,
+    0x1800c610400c1000,
+    0x1044020210400302,
+    0x4023402410000109,
+    0x4080002018000104,
+    0xc6052012028101,
+    0x204010041000200,
+    0x10d01080810900,
+    0x30030101040021,
+    0x821002210001,
+    0x40018404020a0c00,
+    0x2000048048280001,
+    0x1042060184,
+    0x34009d90020a0001,
+    0x1001200410008030,
+    0x230060891040200,
+    0x24a00c0502002020,
+    0x200802082104050,
+    0x4020420200840c20,
+    0x20400b861080801,
+    0xa000020c11089,
+    0x902000004208200,
+    0x80000810010a02,
+    0x80201286680104,
+    0x102500208004082
+];
+
+
+fn generate_blocker_permutations(mask: Bitboard) -> Vec<Bitboard> {
+    let mut bits = vec![];
+    for i in 0..64 {
+        if (mask >> i) & 1 != 0 {
+            bits.push(i);
+        }
+    }
+    let mut permutations = Vec::new();
+    for combo in 0..(1 << bits.len()) {
+        let mut b = 0;
+        for (j, &bit) in bits.iter().enumerate() {
+            if (combo >> j) & 1 != 0 {
+                b |= 1 << bit;
+            }
+        }
+        permutations.push(b);
+    }
+    permutations
+}
+
+fn compute_rook_attacks(square: usize, blockers: Bitboard) -> Bitboard {
+    let mut attacks = 0;
+    let rank = square / 8;
+    let file = square % 8;
+
+    for r in (rank + 1)..8 {
+        let sq = r * 8 + file;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+    }
+    for r in (0..rank).rev() {
+        let sq = r * 8 + file;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+    }
+    for f in (file + 1)..8 {
+        let sq = rank * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+    }
+    for f in (0..file).rev() {
+        let sq = rank * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+    }
+    attacks
+}
+
+pub fn compute_bishop_attacks(square: usize, blockers: Bitboard) -> Bitboard {
+    let mut attacks = 0;
+    let rank = square / 8;
+    let file = square % 8;
+
+    // NE
+    let mut r = rank + 1;
+    let mut f = file + 1;
+    while r < 8 && f < 8 {
+        let sq = r * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+        r += 1;
+        f += 1;
+    }
+
+    // NW
+    r = rank + 1;
+    f = file.wrapping_sub(1);
+    while r < 8 && f < 8 {
+        let sq = r * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+        r += 1;
+        if f == 0 { break; } else { f -= 1; }
+    }
+
+    // SE
+    r = rank.wrapping_sub(1);
+    f = file + 1;
+    while r < 8 && f < 8 {
+        let sq = r * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+        if r == 0 { break; } else { r -= 1; }
+        f += 1;
+    }
+
+    // SW
+    r = rank.wrapping_sub(1);
+    f = file.wrapping_sub(1);
+    while r < 8 && f < 8 {
+        let sq = r * 8 + f;
+        attacks |= 1 << sq;
+        if blockers & (1 << sq) != 0 { break; }
+        if r == 0 || f == 0 { break; } else { r -= 1; f -= 1; }
+    }
+
+    attacks
+}
+
+pub fn find_magic<F>(
+    square: usize,
+    blocker_mask: Bitboard,
+    compute_attacks: F
+) -> Option<u64>
+where
+    F: Fn(usize, Bitboard) -> Bitboard,
+{
+    let permutations = generate_blocker_permutations(blocker_mask);
+    let relevant_bits = blocker_mask.count_ones();
+    let shift = 64 - relevant_bits;
+    let mut rand = rng();
+
+    for _ in 0..10_000_000 {
+        let magic = rand.random::<u64>() & rand.random::<u64>() & rand.random::<u64>();
+        let mut seen = HashMap::new();
+        let mut ok = true;
+
+        for &blockers in &permutations {
+            let index = ((blockers.wrapping_mul(magic)) >> shift) as usize;
+            let attacks = compute_attacks(square, blockers);
+            if let Some(&existing) = seen.get(&index) {
+                if existing != attacks {
+                    ok = false;
+                    break;
+                }
+            } else {
+                seen.insert(index, attacks);
+            }
+        }
+
+        if ok {
+            return Some(magic);
+        }
+    }
+
+    None
+}
+
+
+pub fn build_rook_attack_table() -> Vec<Vec<Bitboard>> {
+    let mut table = vec![vec![]; 64];
+
+    for square in 0..64 {
+        let blocker_mask = ROOK_BLOCKER_MASKS[square];
+        let magic = ROOK_MAGICS[square];
+        let relevant_bits = blocker_mask.count_ones();
+        let shift = 64 - relevant_bits;
+        let size = 1 << relevant_bits;
+
+        let permutations = generate_blocker_permutations(blocker_mask);
+        let mut attacks = vec![0; size];
+
+        for &blockers in &permutations {
+            let index = (blockers.wrapping_mul(magic)) >> shift;
+            let attack = compute_rook_attacks(square, blockers);
+            attacks[index as usize] = attack;
+        }
+
+        table[square] = attacks;
+    }
+
+    table
+}
+
+pub fn build_bishop_attack_table() -> Vec<Vec<Bitboard>> {
+    let mut table = vec![vec![]; 64];
+
+    for square in 0..64 {
+        let blocker_mask = BISHOP_BLOCKER_MASKS[square];
+        let magic = BISHOP_MAGICS[square];
+        let relevant_bits = blocker_mask.count_ones();
+        let shift = 64 - relevant_bits;
+        let table_size = 1 << relevant_bits;
+
+        let permutations = generate_blocker_permutations(blocker_mask);
+        let mut attacks = vec![0; table_size];
+
+        for &blockers in &permutations {
+            let index = (blockers.wrapping_mul(magic)) >> shift;
+            let attack = compute_bishop_attacks(square, blockers);
+            attacks[index as usize] = attack;
+        }
+
+        table[square] = attacks;
+    }
+
+    table
+}

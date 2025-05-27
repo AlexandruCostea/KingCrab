@@ -13,7 +13,7 @@ pub struct RecordedMove {
 impl RecordedMove {
     pub fn new_empty() -> Self {
         RecordedMove {
-            mv: ChessMove::quiet(Square::A1, Square::A1),
+            mv: ChessMove::quiet(Piece::None, Square::A1, Square::A1),
             prev_state: GameState::new(),
             captured_piece: None,
         }

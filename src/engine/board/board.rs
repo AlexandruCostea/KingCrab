@@ -72,6 +72,13 @@ impl Board {
 
     }
 
+    pub fn get_ep_square(&self) -> Option<Square> {
+        match self.game_state.en_passant {
+            Some(square) => Some(Square::try_from(square as usize).unwrap()),
+            None => None,
+        }
+    }
+
     pub fn init(&mut self) {
         let pieces_per_side_bitboards = self.init_pieces_per_side_bitboards();
         self.sides[Side::White as usize] = pieces_per_side_bitboards.0;
@@ -324,7 +331,7 @@ impl Board {
         };
         self.game_history.push(
             RecordedMove::new(chess_move, prev_state, captured));
-        self.game_state.active_side = self.get_opponent();
+        self.switch_active_side();
     }
 
     pub fn undo_move(&mut self) {
@@ -635,7 +642,7 @@ impl Display for Board {
         //     }
         //     writeln!(f)?;
         // }
-        writeln!(f, "\n White Bitboards");
+        writeln!(f, "\n White Bitboards")?;
 
         for i in 0..NrOf::PIECE_TYPES {
             let current_board = self.pieces[0][i];
