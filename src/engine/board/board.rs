@@ -8,7 +8,7 @@ use crate::engine::definitions::{Castling, FEN_STARTING_POSITION, HALF_MOVE_MAX,
 use super::{fen::{FenError, FenParser}, game_history::{RecordedMove, GameHistory},
     game_state::GameState, zobrist::ZobristKeys};
 
-
+#[derive(Clone)]
 pub struct Board {
     pub sides: [Bitboard; NrOf::SIDES],
     pub pieces: [[Bitboard; NrOf::PIECE_TYPES]; NrOf::SIDES],
@@ -17,6 +17,7 @@ pub struct Board {
     pub game_history: GameHistory,
     pub zobrist_keys: Arc<ZobristKeys>,
 }
+
 
 
 impl Board {

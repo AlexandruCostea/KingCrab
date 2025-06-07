@@ -1,9 +1,10 @@
 use crate::engine::{board::board::Board, definitions::{Bitboard, Castling, SQUARE_BITBOARDS}};
-use super::{chess_move::ChessMove, magics::{build_bishop_attack_table, build_rook_attack_table, BISHOP_BLOCKER_MASKS, BISHOP_MAGICS, KING_BASE_ATTACKS, KNIGHT_BASE_ATTACKS, PAWN_BLACK_ATTACKS, PAWN_WHITE_ATTACKS, ROOK_BLOCKER_MASKS, ROOK_MAGICS}};
+use super::{chess_move::ChessMove, move_sorter::MoveSorter, magics::{build_bishop_attack_table, build_rook_attack_table, BISHOP_BLOCKER_MASKS, BISHOP_MAGICS, KING_BASE_ATTACKS, KNIGHT_BASE_ATTACKS, PAWN_BLACK_ATTACKS, PAWN_WHITE_ATTACKS, ROOK_BLOCKER_MASKS, ROOK_MAGICS}};
 use crate::engine::definitions::{Side, Square, Piece};
 
 
 pub struct MoveGenerator {
+    move_sorter: MoveSorter,
     rook_attack_table: Vec<Vec<Bitboard>>,
     bishop_attack_table: Vec<Vec<Bitboard>>,
 }
@@ -13,7 +14,9 @@ impl MoveGenerator {
     pub fn new() -> Self {
         let rook_attack_table = build_rook_attack_table();
         let bishop_attack_table = build_bishop_attack_table();
+        let move_sorter = MoveSorter::new();
         MoveGenerator {
+            move_sorter,
             rook_attack_table,
             bishop_attack_table,
         }
@@ -31,6 +34,7 @@ impl MoveGenerator {
             };
             board.undo_move();
         }
+        self.move_sorter.sort_moves(board, &mut moves);
         moves
     }
 
@@ -57,7 +61,7 @@ impl MoveGenerator {
         result
     }
 
-    fn is_king_in_check(&self, board: &Board, side: Side) -> bool {
+    pub fn is_king_in_check(&self, board: &Board, side: Side) -> bool {
         let king_square = board.get_king_square(side);
         let opposing_side = Side::try_from(side as usize ^ 1).unwrap();
         self.is_square_attacked(board, king_square, opposing_side)

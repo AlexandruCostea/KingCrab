@@ -28,6 +28,8 @@ impl RecordedMove {
     }
 }
 
+
+#[derive(Clone, Copy)]
 pub struct GameHistory {
     list: [RecordedMove; MAX_GAME_MOVES],
     count: usize,

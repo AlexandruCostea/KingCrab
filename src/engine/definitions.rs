@@ -20,6 +20,8 @@ pub const HALF_MOVE_MAX: u8 = 100;
 
 pub const FEN_STARTING_POSITION: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+pub const MAX_POSITION_SCORE: f32 = 100000.0;
+pub const MIN_POSITION_SCORE: f32 = -100000.0;
 
 
 // Chess Elments
@@ -45,7 +47,7 @@ pub enum Side {
 
 
 #[repr(usize)]
-#[derive(Clone, Copy, PartialEq, Debug, TryFromPrimitive)]
+#[derive(Clone, Copy, PartialEq, Debug, TryFromPrimitive, Hash, Eq)]
 pub enum Piece {
     King = 0,
     Queen = 1,
@@ -164,6 +166,7 @@ impl Display for Square {
         }
     }
 }
+
 
 impl Display for Piece {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
