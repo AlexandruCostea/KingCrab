@@ -45,7 +45,7 @@ impl CNNEvaluator {
     }
 
 
-    fn encode_board(&self, board: &Board) -> Array3<f32> {
+    fn encode_board(&mut self, board: &Board) -> Array3<f32> {
         let mut planes = Array3::<f32>::zeros((14, 8, 8));
 
         for i in 0..NrOf::SQUARES {
@@ -98,7 +98,7 @@ impl CNNEvaluator {
 }
 
 impl Evaluator for CNNEvaluator {
-    fn evaluate_board(&self, board: &Board) -> f32 {
+    fn evaluate_board(&mut self, board: &Board) -> f32 {
         let input_tensor: Array3<f32> = self.encode_board(board);
 
         let batched = input_tensor.insert_axis(Axis(0));
