@@ -1,13 +1,11 @@
-mod engine;
- 
-use engine::board::{board::Board};
-use engine::move_generator::move_generator::MoveGenerator;
+use KingCrab::Board;
+use KingCrab::MoveGenerator;
 
-use crate::engine::evaluator::cnn_evaluator::CNNEvaluator;
-use crate::engine::evaluator::evaluator::Evaluator;
-use crate::engine::evaluator::halfka_evaluator::HalfkaEvaluator;
-use crate::engine::searcher::searcher::Searcher;
-use crate::engine::searcher::transposition_table::TranspositionTable;
+use KingCrab::CNNEvaluator;
+use KingCrab::Evaluator;
+use KingCrab::HalfkaEvaluator;
+use KingCrab::Searcher;
+use KingCrab::TranspositionTable;
  
  fn main() {
     let mut board: Board = Board::new();
@@ -22,11 +20,10 @@ use crate::engine::searcher::transposition_table::TranspositionTable;
    let mut transposition_table = TranspositionTable::new(20);
 
    let mut searcher = Searcher::new(&mut evaluator, &move_generator, &mut transposition_table);
-   let result = searcher.search(&board, 7);
+   let result = searcher.search(&board, 6);
 
-   if let Some(best_move) = result.best_move {
+   if let Some(best_move) = result {
       println!("Best move: {}", best_move);
-      println!("Score: {}", result.score);
    } else {
       println!("No best move found.");
    }

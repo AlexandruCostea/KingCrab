@@ -3,6 +3,12 @@ name = "KingCrab"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "KingCrab"
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+
 [dependencies]
 bitflags = "2.9.1"
 if_chain = "1.0.2"

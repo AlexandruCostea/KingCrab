@@ -24,9 +24,13 @@ impl<'a> Searcher<'a> {
         }
     }
 
-    pub fn search(&mut self, board: &Board, depth: u8) -> SearchResult {
+    pub fn search(&mut self, board: &Board, depth: u8) -> Option<ChessMove> {
         let mut board_clone = board.clone();
-        return self.search_move(&mut board_clone, depth, MIN_POSITION_SCORE, MAX_POSITION_SCORE);
+        let result = self.search_move(&mut board_clone,
+                                        depth,
+                                        MIN_POSITION_SCORE,
+                                        MAX_POSITION_SCORE);
+        return result.best_move;
     }
 
     pub fn search_move(&mut self, board: &mut Board, depth: u8, mut alpha: f32, beta: f32) -> SearchResult {
