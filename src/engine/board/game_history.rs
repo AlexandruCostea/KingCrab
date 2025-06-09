@@ -19,7 +19,8 @@ impl RecordedMove {
         }
     }
 
-    pub fn new(mv: ChessMove, prev_state: GameState, captured_piece: Option<(Piece, Side, Square)>) -> Self {
+    pub fn new(mv: ChessMove, prev_state: GameState,
+        captured_piece: Option<(Piece, Side, Square)>) -> Self {
         RecordedMove {
             mv,
             prev_state,

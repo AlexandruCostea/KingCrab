@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use ort::{tensor::OrtOwnedTensor, Environment, SessionBuilder, Value};
 use ndarray::{Array3, Axis, CowArray, IxDyn};
-use crate::engine::{board::board::Board, definitions::{Castling, NrOf, Piece, Side, SQUARE_BITBOARDS}, evaluator::evaluator::Evaluator};
+use crate::engine::{board::board::Board,
+    definitions::{Castling, NrOf, Piece, Side, SQUARE_BITBOARDS},
+    evaluator::evaluator::Evaluator};
+
 
 pub struct CNNEvaluator {
     session: ort::Session,
@@ -104,7 +107,8 @@ impl Evaluator for CNNEvaluator {
         let batched = input_tensor.insert_axis(Axis(0));
         let cow_input: CowArray<f32, IxDyn> = CowArray::from(batched.into_dyn());
 
-        let input = Value::from_array(self.session.allocator(), &cow_input)
+        let input = Value::from_array(self.session.allocator(),
+                                            &cow_input)
                                                     .unwrap();
 
         let outputs = self
@@ -114,7 +118,8 @@ impl Evaluator for CNNEvaluator {
 
         let output_tensor: OrtOwnedTensor<f32, IxDyn> = outputs[0]
         .try_extract()
-        .map_err(|e| format!("Failed to extract output tensor: {e}")).unwrap();
+        .map_err(|e| format!("Failed to extract output tensor: {e}"))
+                            .unwrap();
 
         let view = output_tensor.view();
         let value = *view

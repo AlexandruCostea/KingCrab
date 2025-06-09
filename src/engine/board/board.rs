@@ -8,6 +8,7 @@ use crate::engine::definitions::{Castling, FEN_STARTING_POSITION, HALF_MOVE_MAX,
 use super::{fen::{FenError, FenParser}, game_history::{RecordedMove, GameHistory},
     game_state::GameState, zobrist::ZobristKeys};
 
+
 #[derive(Clone)]
 pub struct Board {
     pub sides: [Bitboard; NrOf::SIDES],
@@ -167,9 +168,12 @@ impl Board {
         }
 
         // Hash the castling, active color, and en-passant state into the key.
-        self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
-        self.game_state.zobrist_key ^= self.zobrist_keys.side(self.game_state.active_side);
-        self.game_state.zobrist_key ^= self.zobrist_keys.en_passant(self.game_state.en_passant);
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                                        .castling(self.game_state.castling);
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                                        .side(self.game_state.active_side);
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                                        .en_passant(self.game_state.en_passant);
     }
 
 
@@ -418,9 +422,11 @@ impl Board {
     }
 
     pub fn set_castling_rights(&mut self, new_rights: u8) {
-        self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                                        .castling(self.game_state.castling);
         self.game_state.castling = new_rights;
-        self.game_state.zobrist_key ^= self.zobrist_keys.castling(self.game_state.castling);
+        self.game_state.zobrist_key ^= self.zobrist_keys
+                                        .castling(self.game_state.castling);
     }
 
     fn clear_castling_rights_for_square(&mut self, rook_square: Square) {
@@ -618,67 +624,32 @@ impl Display for Board {
 
         writeln!(f, "  a b c d e f g h")?;
 
-        // writeln!(f, "\nWhite occupancy:")?;
-        // for rank in (0..8).rev() {
-        //     for file in 0..8 {
-        //         let square_index = rank * 8 + file;
-        //         if self.sides[Side::White as usize] & (1 << square_index) != 0 {
-        //             write!(f, "⬜")?;
-        //         } else {
-        //             write!(f, "⬛")?;
-        //         }
-        //     }
-        //     writeln!(f)?;
-        // }
-
-        // writeln!(f, "\nBlack occupancy:")?;
-        // for rank in (0..8).rev() {
-        //     for file in 0..8 {
-        //         let square_index = rank * 8 + file;
-        //         if self.sides[Side::Black as usize] & (1 << square_index) != 0 {
-        //             write!(f, "⬜")?;
-        //         } else {
-        //             write!(f, "⬛")?;
-        //         }
-        //     }
-        //     writeln!(f)?;
-        // }
-        writeln!(f, "\n White Bitboards")?;
-
-        for i in 0..NrOf::PIECE_TYPES {
-            let current_board = self.pieces[0][i];
-            // display the bitboard as a 8x8 grid
-            for j in (0..8).rev() {
-                for k in 0..8 {
-                    let square_index = j * 8 + k;
-                    if current_board & (1 << square_index) != 0 {
-                        write!(f, "⬜")?;
-                    } else {
-                        write!(f, "⬛")?;
-                    }
+        writeln!(f, "\nWhite occupancy:")?;
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                if self.sides[Side::White as usize] & (1 << square_index) != 0 {
+                    write!(f, "⬜")?;
+                } else {
+                    write!(f, "⬛")?;
                 }
-                writeln!(f)?;
             }
-            writeln!(f, "\n")?;
+            writeln!(f)?;
         }
 
-        writeln!(f, "\n Black Bitboards")?;
-        for i in 0..NrOf::PIECE_TYPES {
-            let current_board = self.pieces[1][i];
-            // display the bitboard as a 8x8 grid
-            for j in (0..8).rev() {
-                for k in 0..8 {
-                    let square_index = j * 8 + k;
-                    if current_board & (1 << square_index) != 0 {
-                        write!(f, "⬜")?;
-                    } else {
-                        write!(f, "⬛")?;
-                    }
+        writeln!(f, "\nBlack occupancy:")?;
+        for rank in (0..8).rev() {
+            for file in 0..8 {
+                let square_index = rank * 8 + file;
+                if self.sides[Side::Black as usize] & (1 << square_index) != 0 {
+                    write!(f, "⬜")?;
+                } else {
+                    write!(f, "⬛")?;
                 }
-                writeln!(f)?;
             }
-            writeln!(f, "\n")?;
+            writeln!(f)?;
         }
+
         writeln!(f, "\nPiece list:")?;
         for rank in (0..8).rev() {
             for file in 0..8 {

@@ -1,5 +1,10 @@
 
-use crate::engine::{board::board::Board, definitions::{Side, MAX_POSITION_SCORE, MIN_POSITION_SCORE}, evaluator::evaluator::Evaluator, move_generator::{chess_move::ChessMove, move_generator::MoveGenerator}, searcher::transposition_table::{Bound, TranspositionTable, TranspositionTableEntry}};
+use crate::engine::{board::board::Board,
+    definitions::{Side, MAX_POSITION_SCORE, MIN_POSITION_SCORE},
+    evaluator::evaluator::Evaluator,
+    move_generator::{chess_move::ChessMove, move_generator::MoveGenerator},
+    searcher::transposition_table::{Bound, TranspositionTable, TranspositionTableEntry}};
+
 
 pub struct SearchResult {
     pub best_move: Option<ChessMove>,
@@ -33,7 +38,8 @@ impl<'a> Searcher<'a> {
         return result.best_move;
     }
 
-    pub fn search_move(&mut self, board: &mut Board, depth: u8, mut alpha: f32, beta: f32) -> SearchResult {
+    pub fn search_move(&mut self, board: &mut Board, depth: u8,
+        mut alpha: f32, beta: f32) -> SearchResult {
 
         let alpha_og = alpha;
         let zobrist = board.game_state.zobrist_key;
@@ -58,7 +64,9 @@ impl<'a> Searcher<'a> {
             }
         }
 
-        if board.draw_by_fifty_move_rule() || board.draw_by_threefold_repetition() || board.draw_by_insufficient_material() {
+        if board.draw_by_fifty_move_rule() ||
+            board.draw_by_threefold_repetition() ||
+            board.draw_by_insufficient_material() {
             return SearchResult {
                 best_move: None,
                 score: 0.0,
@@ -66,7 +74,8 @@ impl<'a> Searcher<'a> {
         }
 
         if board.game_history.len() > 0 {
-            let last_move = board.game_history.get_ref(board.game_history.len() - 1);
+            let last_move = board.game_history
+                                            .get_ref(board.game_history.len() - 1);
             if last_move.mv.is_checkmate {
                 return match board.get_active_side() {
                     // don't forget that the side switches after a move
@@ -111,7 +120,9 @@ impl<'a> Searcher<'a> {
             }
             board.make_move(mv);
 
-            let mut result = self.search_move(board, depth - 1, -beta, -alpha);
+            let mut result = self.search_move(board,
+                                            depth - 1,
+                                            -beta, -alpha);
             result.score = -result.score;
             board.undo_move();
 

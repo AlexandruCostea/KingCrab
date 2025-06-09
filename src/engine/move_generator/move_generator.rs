@@ -1,5 +1,9 @@
 use crate::engine::{board::board::Board, definitions::{Bitboard, Castling, SQUARE_BITBOARDS}};
-use super::{chess_move::ChessMove, move_sorter::MoveSorter, magics::{build_bishop_attack_table, build_rook_attack_table, BISHOP_BLOCKER_MASKS, BISHOP_MAGICS, KING_BASE_ATTACKS, KNIGHT_BASE_ATTACKS, PAWN_BLACK_ATTACKS, PAWN_WHITE_ATTACKS, ROOK_BLOCKER_MASKS, ROOK_MAGICS}};
+use super::{chess_move::ChessMove, move_sorter::MoveSorter,
+    magics::{build_bishop_attack_table, build_rook_attack_table,
+        BISHOP_BLOCKER_MASKS, BISHOP_MAGICS, KING_BASE_ATTACKS,
+        KNIGHT_BASE_ATTACKS, PAWN_BLACK_ATTACKS, PAWN_WHITE_ATTACKS,
+        ROOK_BLOCKER_MASKS, ROOK_MAGICS}};
 use crate::engine::definitions::{Side, Square, Piece};
 
 
@@ -102,7 +106,8 @@ impl MoveGenerator {
         let rook_mask = ROOK_BLOCKER_MASKS[sq];
         let rook_magic = ROOK_MAGICS[sq];
         let rook_shift = 64 - rook_mask.count_ones();
-        let rook_index = ((occupancy & rook_mask).wrapping_mul(rook_magic)) >> rook_shift;
+        let rook_index = ((occupancy & rook_mask)
+                                .wrapping_mul(rook_magic)) >> rook_shift;
         let rook_attacks = self.rook_attack_table[sq][rook_index as usize];
         if rook_attacks & rook_like != 0 {
             return true;
@@ -112,7 +117,8 @@ impl MoveGenerator {
         let bishop_mask = BISHOP_BLOCKER_MASKS[sq];
         let bishop_magic = BISHOP_MAGICS[sq];
         let bishop_shift = 64 - bishop_mask.count_ones();
-        let bishop_index = ((occupancy & bishop_mask).wrapping_mul(bishop_magic)) >> bishop_shift;
+        let bishop_index = ((occupancy & bishop_mask)
+                                .wrapping_mul(bishop_magic)) >> bishop_shift;
         let bishop_attacks = self.bishop_attack_table[sq][bishop_index as usize];
         if bishop_attacks & bishop_like != 0 {
             return true;
@@ -140,30 +146,43 @@ impl MoveGenerator {
 
             match piece {
                 Piece::Pawn => {
-                    let mut pawn_moves = self.generate_pawn_moves(board, i, side, full_occupancy, enemy_pieces);
+                    let mut pawn_moves = self.generate_pawn_moves(
+                                                            board, i, side,
+                                                            full_occupancy, enemy_pieces);
                     moves.append(&mut pawn_moves);
                 },
                 Piece::Knight => {
-                    let mut knight_moves = self.generate_knight_moves(i, own_pieces, enemy_pieces);
+                    let mut knight_moves = self.generate_knight_moves(
+                                                        i, own_pieces, enemy_pieces);
                     moves.append(&mut knight_moves);
                 },
                 Piece::Bishop => {
-                    let mut bishop_moves = self.generate_bishop_moves(board, i, full_occupancy, enemy_pieces, Piece::Bishop);
+                    let mut bishop_moves = self.generate_bishop_moves(
+                                                            board, i, full_occupancy,
+                                                            enemy_pieces, Piece::Bishop);
                     moves.append(&mut bishop_moves);
                 },
                 Piece::Rook => {
-                    let mut rook_moves = self.generate_rook_moves(board, i, full_occupancy, enemy_pieces, Piece::Rook);
+                    let mut rook_moves = self.generate_rook_moves(
+                                                            board, i, full_occupancy,
+                                                            enemy_pieces, Piece::Rook);
                     moves.append(&mut rook_moves);
                 },
                 Piece::Queen => {
-                    let mut rook_like_moves = self.generate_rook_moves(board, i, full_occupancy, enemy_pieces, Piece::Queen);
-                    let mut bishop_like_moves = self.generate_bishop_moves(board, i, full_occupancy, enemy_pieces, Piece::Queen);
+                    let mut rook_like_moves = self.generate_rook_moves(
+                                                                board, i, full_occupancy,
+                                                                enemy_pieces, Piece::Queen);
+                    let mut bishop_like_moves = self.generate_bishop_moves(
+                                                                board, i, full_occupancy,
+                                                                enemy_pieces, Piece::Queen);
 
                     moves.append(&mut rook_like_moves);
                     moves.append(&mut bishop_like_moves);
                 },
                 Piece::King => {
-                    let mut king_moves = self.generate_king_moves(board, i, side, own_pieces, enemy_pieces);
+                    let mut king_moves = self.generate_king_moves(
+                                                            board, i, side,
+                                                            own_pieces, enemy_pieces);
                     moves.append(&mut king_moves);
                 }
                 Piece::None => unreachable!(),
@@ -173,11 +192,14 @@ impl MoveGenerator {
         moves
     }
 
-    fn generate_pawn_moves(&self, board: &Board, from: usize, side: Side, full_occupancy: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
+    fn generate_pawn_moves(&self, board: &Board, from: usize, side: Side,
+        full_occupancy: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
         let mut pawn_moves = Vec::new();
         let from_signed = from as isize;
         let square = Square::try_from(from).unwrap();
-        let (single_push, double_push, promotion, double, left_capture, right_capture)  = if side == Side::White {
+        let (single_push, double_push, promotion,
+            double, left_capture, right_capture) = 
+            if side == Side::White {
             (   
                 from_signed + 8,
                 from_signed + 16,
@@ -234,9 +256,10 @@ impl MoveGenerator {
             Ok(sq) => Some(SQUARE_BITBOARDS[sq as usize]),
             Err(_) => None,
         };
-        let left_edges = vec![Square::A1, Square::A2, Square::A3, Square::A4, Square::A5, Square::A6, Square::A7, Square::A8];
-        let right_edges = vec![Square::H1, Square::H2, Square::H3, Square::H4, Square::H5, Square::H6, Square::H7, Square::H8];
-
+        let left_edges = vec![Square::A1, Square::A2, Square::A3, Square::A4,
+                                        Square::A5, Square::A6, Square::A7, Square::A8];
+        let right_edges = vec![Square::H1, Square::H2, Square::H3, Square::H4,
+                                        Square::H5, Square::H6, Square::H7, Square::H8];
 
         // Pawn pushes
         if let Some(single_push_bitboard) = single_push {
@@ -244,7 +267,9 @@ impl MoveGenerator {
             if single_push_bitboard & full_occupancy == 0 {
                 if promotion.contains(&square) {
                     for promotion_piece in [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight] {
-                        pawn_moves.push(ChessMove::promotion(square, sp_square, promotion_piece, false));
+                        pawn_moves.push(ChessMove::promotion(
+                                    square, sp_square,
+                                    promotion_piece, false));
                     }
                 } else {
                     pawn_moves.push(ChessMove::quiet(Piece::Pawn, square, sp_square));
@@ -262,11 +287,13 @@ impl MoveGenerator {
         // Pawn captures
         if let Some(left_capture_bitboard) = left_capture {
             let lc_square = left_capture_square.unwrap();
-            if !(side == Side::White && left_edges.contains(&square)) && !(side == Side::Black && right_edges.contains(&square)) {
+            if !(side == Side::White && left_edges.contains(&square)) && 
+                !(side == Side::Black && right_edges.contains(&square)) {
                 if left_capture_bitboard & enemy_pieces != 0 {
                     if promotion.contains(&square) {
                         for promotion_piece in [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight] {
-                            pawn_moves.push(ChessMove::promotion(square, lc_square, promotion_piece, true));
+                            pawn_moves.push(ChessMove::promotion(
+                                square, lc_square, promotion_piece, true));
                         }
                     } else {
                         pawn_moves.push(ChessMove::capture(Piece::Pawn, square, lc_square));
@@ -282,11 +309,13 @@ impl MoveGenerator {
 
         if let Some(right_capture_bitboard) = right_capture {
             let rc_square = right_capture_square.unwrap();
-            if !(side == Side::White && right_edges.contains(&square)) && !(side == Side::Black && left_edges.contains(&square)) {
+            if !(side == Side::White && right_edges.contains(&square)) &&
+                !(side == Side::Black && left_edges.contains(&square)) {
                 if right_capture_bitboard & enemy_pieces != 0 {
                     if promotion.contains(&square) {
                         for promotion_piece in [Piece::Queen, Piece::Rook, Piece::Bishop, Piece::Knight] {
-                            pawn_moves.push(ChessMove::promotion(square, rc_square, promotion_piece, true));
+                            pawn_moves.push(ChessMove::promotion(square, rc_square,
+                                                promotion_piece, true));
                         }
                     } else {
                         pawn_moves.push(ChessMove::capture(Piece::Pawn, square, rc_square));
@@ -303,7 +332,8 @@ impl MoveGenerator {
         pawn_moves
     }
 
-    fn generate_knight_moves(&self, from: usize, own_pieces: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
+    fn generate_knight_moves(&self, from: usize,
+        own_pieces: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
         let mut knight_moves = Vec::new();
         let square = Square::try_from(from).unwrap();
         let knight_attacks = KNIGHT_BASE_ATTACKS[from];
@@ -313,9 +343,11 @@ impl MoveGenerator {
                 let to_square = Square::try_from(i).unwrap();
                 if own_pieces & SQUARE_BITBOARDS[i] == 0 {
                     if enemy_pieces & SQUARE_BITBOARDS[i] == 0 {
-                        knight_moves.push(ChessMove::quiet(Piece::Knight, square, to_square));
+                        knight_moves.push(ChessMove::quiet(
+                            Piece::Knight, square, to_square));
                     } else {
-                    knight_moves.push(ChessMove::capture(Piece::Knight, square, to_square));
+                    knight_moves.push(ChessMove::capture(
+                        Piece::Knight, square, to_square));
                     }
                 }
             }
@@ -324,13 +356,15 @@ impl MoveGenerator {
         knight_moves
     }
 
-    fn generate_bishop_moves(&self, board: &Board, from: usize, full_occupancy: Bitboard, enemy_pieces: Bitboard, piece_type: Piece) -> Vec<ChessMove> {
+    fn generate_bishop_moves(&self, board: &Board, from: usize,
+        full_occupancy: Bitboard, enemy_pieces: Bitboard, piece_type: Piece) -> Vec<ChessMove> {
         let mut bishop_moves = Vec::new();
         let square = Square::try_from(from).unwrap();
         let bishop_mask = BISHOP_BLOCKER_MASKS[from];
         let bishop_magic = BISHOP_MAGICS[from];
         let bishop_shift = 64 - bishop_mask.count_ones();
-        let bishop_index = ((full_occupancy & bishop_mask).wrapping_mul(bishop_magic)) >> bishop_shift;
+        let bishop_index = ((full_occupancy & bishop_mask)
+                                    .wrapping_mul(bishop_magic)) >> bishop_shift;
         let bishop_attacks = self.bishop_attack_table[from][bishop_index as usize];
 
         for i in 0..64 {
@@ -347,13 +381,15 @@ impl MoveGenerator {
         bishop_moves
     }
 
-    fn generate_rook_moves(&self, board: &Board, from: usize, full_occupancy: Bitboard, enemy_pieces: Bitboard, piece_type: Piece) -> Vec<ChessMove> {
+    fn generate_rook_moves(&self, board: &Board, from: usize,
+        full_occupancy: Bitboard, enemy_pieces: Bitboard, piece_type: Piece) -> Vec<ChessMove> {
         let mut rook_moves = Vec::new();
         let square = Square::try_from(from).unwrap();
         let rook_mask = ROOK_BLOCKER_MASKS[from];
         let rook_magic = ROOK_MAGICS[from];
         let rook_shift = 64 - rook_mask.count_ones();
-        let rook_index = ((full_occupancy & rook_mask).wrapping_mul(rook_magic)) >> rook_shift;
+        let rook_index = ((full_occupancy & rook_mask)
+                                .wrapping_mul(rook_magic)) >> rook_shift;
         let rook_attacks = self.rook_attack_table[from][rook_index as usize];
 
         for i in 0..64 {
@@ -370,7 +406,8 @@ impl MoveGenerator {
         rook_moves
     }
 
-    fn generate_king_moves(&self, board: &Board, from: usize, side: Side, own_pieces: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
+    fn generate_king_moves(&self, board: &Board, from: usize, side: Side,
+        own_pieces: Bitboard, enemy_pieces: Bitboard) -> Vec<ChessMove> {
         let mut king_moves = Vec::new();
         let square = Square::try_from(from).unwrap();
         let king_attacks = KING_BASE_ATTACKS[from];
@@ -381,9 +418,11 @@ impl MoveGenerator {
                 let to_square = Square::try_from(i).unwrap();
                 if own_pieces & SQUARE_BITBOARDS[i] == 0 {
                     if enemy_pieces & SQUARE_BITBOARDS[i] == 0 {
-                        king_moves.push(ChessMove::quiet(Piece::King, square, to_square));
+                        king_moves.push(ChessMove::quiet(
+                                Piece::King, square, to_square));
                     } else {
-                        king_moves.push(ChessMove::capture(Piece::King, square, to_square));
+                        king_moves.push(ChessMove::capture(
+                                Piece::King, square, to_square));
                     }
                 }
             }
@@ -391,7 +430,8 @@ impl MoveGenerator {
 
         // Castling moves
         let castling_rights = board.game_state.castling;
-        let (kingisde_flag, kingside_squares, queenside_flag, queenside_squares, opponent) = if side == Side::White {
+        let (kingisde_flag, kingside_squares, queenside_flag,
+            queenside_squares, opponent) = if side == Side::White {
             (
                 Castling::WhiteKing as u8,
                 vec![Square::E1, Square::F1, Square::G1, Square::H1],
@@ -417,7 +457,8 @@ impl MoveGenerator {
                 if !self.is_square_attacked(board, kingside_squares[0], opponent) &&
                     !self.is_square_attacked(board, kingside_squares[1], opponent) &&
                     !self.is_square_attacked(board, kingside_squares[2], opponent) {
-                    king_moves.push(ChessMove::castle(kingside_squares[0], kingside_squares[2], true));
+                    king_moves.push(ChessMove::castle(
+                                kingside_squares[0], kingside_squares[2], true));
                 }
             }
         }
@@ -430,7 +471,8 @@ impl MoveGenerator {
                 if !self.is_square_attacked(board, queenside_squares[0], opponent) &&
                     !self.is_square_attacked(board, queenside_squares[1], opponent) &&
                     !self.is_square_attacked(board, queenside_squares[2], opponent) {
-                    king_moves.push(ChessMove::castle(queenside_squares[0], queenside_squares[2], false));
+                    king_moves.push(ChessMove::castle(
+                                queenside_squares[0], queenside_squares[2], false));
                 }
             }
         }

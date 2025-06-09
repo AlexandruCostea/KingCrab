@@ -46,13 +46,20 @@ pub enum FenError {
 impl Display for FenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IncorrectLengthError => write!(f, "Error in FEN string: Must have 6 parts"),
-            Self::PieceSquarePartError(message) => write!(f, "Error in FEN pieces and squares part: {message}"),
-            Self::PlaySidePartError(message) => write!(f, "Error in FEN play side part: {message}"),
-            Self::CastlingRightsPartError(message) => write!(f, "Error in FEN castling rights part: {message}"),
-            Self::EnPassantPartError(message) => write!(f, "Error in FEN en passant part: {message}"),
-            Self::HalfMovePartError(message) => write!(f, "Error in FEN half-move part: {message}"),
-            Self::FullMovePartError(message) => write!(f, "Error in FEN full-move part: {message}"),
+            Self::IncorrectLengthError => 
+                    write!(f, "Error in FEN string: Must have 6 parts"),
+            Self::PieceSquarePartError(message) =>
+                    write!(f, "Error in FEN pieces and squares part: {message}"),
+            Self::PlaySidePartError(message) =>
+                    write!(f, "Error in FEN play side part: {message}"),
+            Self::CastlingRightsPartError(message) =>
+                    write!(f, "Error in FEN castling rights part: {message}"),
+            Self::EnPassantPartError(message) =>
+                    write!(f, "Error in FEN en passant part: {message}"),
+            Self::HalfMovePartError(message) =>
+                    write!(f, "Error in FEN half-move part: {message}"),
+            Self::FullMovePartError(message) =>
+                    write!(f, "Error in FEN full-move part: {message}"),
         }
     }
 }
@@ -75,7 +82,8 @@ impl<'board_lifetime> FenParser<'board_lifetime> {
 
         let fen_parsers = FenParser::create_part_parsers();
 
-        for (part, parser) in fen_parts.iter().zip(fen_parsers.iter()) {
+        for (part, parser) in fen_parts
+                                                            .iter().zip(fen_parsers.iter()) {
             let result = parser(self.board, part);
             if result.is_err() {
                 return Err(result.err().unwrap());
@@ -123,18 +131,30 @@ impl<'board_lifetime> FenParser<'board_lifetime> {
         for c in part.chars() {
             let square = ((rank * 8) + file) as usize;
             match c {
-                'k' => board.pieces[Side::Black as usize][Piece::King as usize] |= SQUARE_BITBOARDS[square],
-                'q' => board.pieces[Side::Black as usize][Piece::Queen as usize] |= SQUARE_BITBOARDS[square],
-                'r' => board.pieces[Side::Black as usize][Piece::Rook as usize] |= SQUARE_BITBOARDS[square],
-                'b' => board.pieces[Side::Black as usize][Piece::Bishop as usize] |= SQUARE_BITBOARDS[square],
-                'n' => board.pieces[Side::Black as usize][Piece::Knight as usize] |= SQUARE_BITBOARDS[square],
-                'p' => board.pieces[Side::Black as usize][Piece::Pawn as usize] |= SQUARE_BITBOARDS[square],
-                'K' => board.pieces[Side::White as usize][Piece::King as usize] |= SQUARE_BITBOARDS[square],
-                'Q' => board.pieces[Side::White as usize][Piece::Queen as usize] |= SQUARE_BITBOARDS[square],
-                'R' => board.pieces[Side::White as usize][Piece::Rook as usize] |= SQUARE_BITBOARDS[square],
-                'B' => board.pieces[Side::White as usize][Piece::Bishop as usize] |= SQUARE_BITBOARDS[square],
-                'N' => board.pieces[Side::White as usize][Piece::Knight as usize] |= SQUARE_BITBOARDS[square],
-                'P' => board.pieces[Side::White as usize][Piece::Pawn as usize] |= SQUARE_BITBOARDS[square],
+                'k' => board.pieces[Side::Black as usize][Piece::King as usize] 
+                                    |= SQUARE_BITBOARDS[square],
+                'q' => board.pieces[Side::Black as usize][Piece::Queen as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'r' => board.pieces[Side::Black as usize][Piece::Rook as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'b' => board.pieces[Side::Black as usize][Piece::Bishop as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'n' => board.pieces[Side::Black as usize][Piece::Knight as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'p' => board.pieces[Side::Black as usize][Piece::Pawn as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'K' => board.pieces[Side::White as usize][Piece::King as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'Q' => board.pieces[Side::White as usize][Piece::Queen as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'R' => board.pieces[Side::White as usize][Piece::Rook as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'B' => board.pieces[Side::White as usize][Piece::Bishop as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'N' => board.pieces[Side::White as usize][Piece::Knight as usize]
+                                    |= SQUARE_BITBOARDS[square],
+                'P' => board.pieces[Side::White as usize][Piece::Pawn as usize]
+                                    |= SQUARE_BITBOARDS[square],
                 '1'..='8' => {
                     if let Some(x) = c.to_digit(10) {
                         file += x as u8;
@@ -218,7 +238,8 @@ impl<'board_lifetime> FenParser<'board_lifetime> {
         if part.len() == 2 {
             let square = Square::from_str(part);
             match square {
-                Ok(square) if EP_WHITE.contains(&square) || EP_BLACK.contains(&square) => {
+                Ok(square) if EP_WHITE.contains(&square) ||
+                        EP_BLACK.contains(&square) => {
                     board.game_state.en_passant = Some(square as u8);
                     return Ok(());
                 }

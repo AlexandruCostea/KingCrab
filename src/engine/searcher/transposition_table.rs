@@ -1,4 +1,6 @@
-use crate::engine::{definitions::ZobristKey, move_generator::chess_move::ChessMove};
+use crate::engine::{definitions::ZobristKey,
+    move_generator::chess_move::ChessMove};
+
 
 #[derive(Clone, Copy)]
 pub enum Bound {

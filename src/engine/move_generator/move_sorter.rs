@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::engine::{board::board::Board, definitions::Piece};
 use super::chess_move::ChessMove;
 
+
 struct ScoredMove {
     mv: ChessMove,
     score: i32,
@@ -47,11 +48,13 @@ impl MoveSorter {
                     if mv.is_capture() {
                     let attacker = board.piece_list[mv.from as usize];
                     let victim = board.piece_list[mv.to as usize];
-                    self.mvv_lva_scores.get(&(attacker, victim)).cloned().unwrap_or(0)
+                    self.mvv_lva_scores.get(&(attacker, victim))
+                                    .cloned().unwrap_or(0)
                     } else {
                         if mv.is_promotion() {
                             let piece = mv.promotion.unwrap();
-                            self.piece_scores.get(&piece).cloned().unwrap_or(0)
+                            self.piece_scores.get(&piece)
+                                        .cloned().unwrap_or(0)
                         } else {
                             if mv.is_check {
                                 500
