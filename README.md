@@ -53,5 +53,5 @@ cargo build --release
 
 ### Running the main program
 ```bash
-cargo run --release
+cargo run --release <cnn_model_path> <cnn_depth> <halfka_model_folder> <halfka_depth>
 ```
