@@ -29,7 +29,7 @@ A classical chess engine written in Rust, featuring modern evaluation with neura
 
 Training and exporting of all neural network evaluators (NNUE and CNN) is done via a dedicated training repository:
 
-🔗 **[Neural Network Training Repository]([https://github.com/your-username/chess-eval-nets](https://github.com/AlexandruCostea/KingCrab))**  
+🔗 **[Neural Network Training Repository](https://github.com/your-username/chess-eval-nets)**  
 Includes:
 - Dataset processing from Lichess evaluation data
 - CNN and NNUE model implementations in PyTorch
