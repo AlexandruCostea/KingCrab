@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ort::{tensor::OrtOwnedTensor, Environment, SessionBuilder, Value};
 use ndarray::{Array3, Axis, CowArray, IxDyn};
 use crate::engine::{board::board::Board,
-    definitions::{Castling, NrOf, Piece, Side, SQUARE_BITBOARDS},
+    definitions::{NrOf, Piece, Side, SQUARE_BITBOARDS},
     evaluator::evaluator::Evaluator};
 
 
@@ -49,7 +49,7 @@ impl CNNEvaluator {
 
 
     fn encode_board(&mut self, board: &Board) -> Array3<f32> {
-        let mut planes = Array3::<f32>::zeros((14, 8, 8));
+        let mut planes = Array3::<f32>::zeros((12, 8, 8));
 
         for i in 0..NrOf::SQUARES {
             let piece = board.piece_list[i];
@@ -73,26 +73,6 @@ impl CNNEvaluator {
                 let file = i % NrOf::FILES;
                 planes[[*channel, rank, file]] = 1.0;
             }
-        }
-
-        let castling_rights = board.game_state.castling;
-        if castling_rights & Castling::WhiteKing as u8 > 0 {
-            planes[[12, 0, 0]] = 1.0;
-        }
-        if castling_rights & Castling::WhiteQueen as u8 > 0 {
-            planes[[12, 0, 1]] = 1.0;
-        }
-        if castling_rights & Castling::BlackKing as u8 > 0 {
-            planes[[12, 1, 0]] = 1.0;
-        }
-        if castling_rights & Castling::BlackQueen as u8 > 0 {
-            planes[[12, 1, 1]] = 1.0;
-        }
-
-        if let Some(ep_square) = board.game_state.en_passant {
-            let rank = (ep_square as usize) / NrOf::FILES;
-            let file = (ep_square as usize) % NrOf::FILES;
-            planes[[13, rank, file]] = 1.0;
         }
 
         planes
