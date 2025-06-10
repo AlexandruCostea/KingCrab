@@ -5,21 +5,37 @@ use king_crab::CNNEvaluator;
 use king_crab::HalfkaEvaluator;
 use king_crab::Searcher;
 use king_crab::TranspositionTable;
+
+use std::env;
+use std::process;
  
  fn main() {
-   let cnn_depth = 5;
-   let halfka_depth = 6;
+
+   let args: Vec<String> = env::args().collect();
+
+   if args.len() < 2 {
+        eprintln!("Usage: {} <cnn_model_path> <cnn_depth> <halfka_model_path> <halfka_depth> [fen]", args[0]);
+        process::exit(1);
+   }
+
+   let cnn_model_path = &args[1];
+   let cnn_depth = args.get(2)
+       .and_then(|s| s.parse::<u8>().ok())
+       .unwrap_or(5);
+
+   let halfka_model_folder_path = &args[3];
+   let halfka_depth = args.get(4)
+       .and_then(|s| s.parse::<u8>().ok())
+       .unwrap_or(6);
 
 
     let mut board: Board = Board::new();
     board.from_fen(None).unwrap();
     println!("Board:\n{}", board);
 
-   let mut evaluator1 = CNNEvaluator::new(
-         "/home/alexcostea/KingCrab/evaluation_models/cnns/depthwise-cnn.onnx")
+   let mut evaluator1 = CNNEvaluator::new(cnn_model_path,)
          .unwrap();
-   let mut evaluator2 = HalfkaEvaluator::new(
-         "/home/alexcostea/KingCrab/evaluation_models/halfka/halfka-22")
+   let mut evaluator2 = HalfkaEvaluator::new(halfka_model_folder_path,)
          .unwrap();
 
    let move_generator = MoveGenerator::new();
