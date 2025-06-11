@@ -40,20 +40,15 @@ use std::process;
 
    let move_generator = MoveGenerator::new();
 
-   let mut transposition_table1 = TranspositionTable::new(20);
-   let mut transposition_table2 = TranspositionTable::new(20);
+   let mut transposition_table = TranspositionTable::new(20);
 
-   let mut searcher1 = Searcher::new(
+   let mut searcher = Searcher::new(
       &mut evaluator1,
       &move_generator, 
-      &mut transposition_table1);
-   let mut searcher2 = Searcher::new(
-      &mut evaluator2,
-      &move_generator,
-      &mut transposition_table2);
+      &mut transposition_table);
 
    let time1 = std::time::Instant::now();
-   let result1 = searcher1.search(&board, cnn_depth);
+   let result1 = searcher.search(&board, cnn_depth);
 
    if let Some(best_move) = result1 {
       println!("Best move with CNN evaluation: {}", best_move);
@@ -65,8 +60,9 @@ use std::process;
             cnn_depth,
             time1.elapsed().as_millis());
 
+   searcher.switch_evaluator(&mut evaluator2);
    let time2 = std::time::Instant::now();
-   let result2 = searcher2.search(&board, halfka_depth);
+   let result2 = searcher.search(&board, halfka_depth);
 
    if let Some(best_move) = result2 {
       println!("Best move with Halfka evaluation: {}", best_move);

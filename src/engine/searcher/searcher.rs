@@ -29,6 +29,10 @@ impl<'a> Searcher<'a> {
         }
     }
 
+    pub fn switch_evaluator(&mut self, evaluator: &'a mut dyn Evaluator) {
+        self.evaluator = evaluator;
+    }
+
     pub fn search(&mut self, board: &Board, depth: u8) -> Option<ChessMove> {
         let mut board_clone = board.clone();
         let result = self.search_move(&mut board_clone,
