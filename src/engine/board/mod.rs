@@ -6,4 +6,4 @@ mod game_state;
 
 mod game_history;
 
-mod fen;
+pub mod fen;
