@@ -68,27 +68,33 @@ impl<'a> Searcher<'a> {
             }
         }
 
+        let last_played_move = match board.game_history.len() {
+            0 => None,
+            _ => Some(board.game_history
+                .get_ref(board.game_history.len() - 1))
+                .map(|m| m.mv.clone())
+        };
+
         if board.draw_by_fifty_move_rule() ||
             board.draw_by_threefold_repetition() ||
             board.draw_by_insufficient_material() {
             return SearchResult {
-                best_move: None,
+                best_move: last_played_move,
                 score: 0.0,
             };
         }
 
         if board.game_history.len() > 0 {
-            let last_move = board.game_history
-                                            .get_ref(board.game_history.len() - 1);
-            if last_move.mv.is_checkmate {
+            let last_move = last_played_move.unwrap();
+            if last_move.is_checkmate {
                 return match board.get_active_side() {
                     // don't forget that the side switches after a move
                     Side::White => SearchResult {
-                        best_move: None,
+                        best_move: last_played_move,
                         score: MIN_POSITION_SCORE,
                     },
                     Side::Black => SearchResult {
-                        best_move: None,
+                        best_move: last_played_move,
                         score: MAX_POSITION_SCORE,
                     },
                 };
@@ -97,17 +103,17 @@ impl<'a> Searcher<'a> {
 
         if depth == 0 {
             return SearchResult {
-                best_move: None,
+                best_move: last_played_move,
                 score: self.evaluator.evaluate_board(board),
             };
         }
 
+        let moves = self.movegen.generate_moves(board);
+
         let mut best_result: SearchResult = SearchResult {
-            best_move: None,
+            best_move: moves.first().cloned(),
             score: MIN_POSITION_SCORE,
         };
-
-        let moves = self.movegen.generate_moves(board);
 
         for mv in moves {
             if mv.is_checkmate {
